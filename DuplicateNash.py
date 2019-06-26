@@ -52,7 +52,7 @@ def ConvertToTen(array):
         if size < 10:
             array[i] = Duplicate(array[i])
     WriteToCSV(array)
-    return
+    return array
 
 TRAINING_FILENAME = '/home/tapadhird/Desktop/Training.csv'
 
@@ -60,8 +60,29 @@ TRAINING_FILENAME = '/home/tapadhird/Desktop/Training.csv'
 trainingSamples, trainingEqs2 = GetTrainingDatafromCSV(TRAINING_FILENAME)
 
 trainingEqs2 = np.array(trainingEqs2)
-ConvertToTen(trainingEqs2)
+conv_nash = ConvertToTen(trainingEqs2)
 
+
+
+
+#
+# image = cv2.imread("/home/tapadhird/Desktop/Road.jpg")
+# cv2.imshow("image",image)
+# image2 = image
+# edges = cv2.Canny(image,50,200)
+# lines = cv2.HoughLinesP(edges,1,np.pi/180,50)
+# cv2.imshow("Edges", edges)
+#
+# for line in lines:
+#     x1, y1, x2, y2 = line[0]
+#     cv2.line(image,(x1,y1),(x2,y2),(0,0,255), 3)
+# cv2.imshow("Line", image)
+#
+# gray = cv2.cvtColor(image2,cv2.COLOR_BGR2GRAY)
+# dst = cv2.cornerHarris(gray,2,3,0.04)
+# image2[dst > 0.01*dst.max()] = [0,0,255]
+# cv2.imshow('dst',image2)
+# cv2.waitKey()
 
 
 
