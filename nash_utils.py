@@ -2,7 +2,7 @@ import random
 import numpy as np
 import pandas as pd
 import nashpy as nash
-import itertools
+import itertools, time
 
 import warnings
 warnings.filterwarnings("error")
@@ -55,7 +55,8 @@ def generate_dataset(num_games=1000, max_nashes=10, players=2, options=3):
 	num_degen = 0
 	while( count < num_games):
 		if count%250 == 0:
-			print("Count is ", count)
+			print("Generated ",count," games in ", time.time()-start, 
+			 	" seconds with ", num_degen, " degenerate games.")
 		#Put game generation in a try statement and catch runtime warning if
 		#	the game is degenerate, retry without incrementing count
 		try:
@@ -83,7 +84,7 @@ def generate_dataset(num_games=1000, max_nashes=10, players=2, options=3):
 			print("Error - game is degenerate")
 
 	#Print
-	print("Generated ",count," games in ", start-time.time(), 
+	print("Generated ",count," games in ", time.time()-start, 
 		  " seconds with ", num_degen, " degenerate games.")
 
 	#Return games, nashes
@@ -113,9 +114,9 @@ def generate_dataset(num_games=1000, max_nashes=10, players=2, options=3):
 # df.to_csv("million-val.csv")
 
 # print(num_degen)
-g, n = generate_dataset(num_games=10000)
-np.save("Training", g)
-np.save("Training-Labels", n)
+g, n = generate_dataset(num_games=1000000)
+np.save("Validation", g)
+np.save("Validation-Labels", n)
 
 # for i in range(n.shape[0]):
 # 	print(n[i])
