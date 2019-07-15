@@ -111,13 +111,13 @@ def main():
     
     #Fully-connected layers
     layer1 = layers.Dense(200, activation = 'relu')(flattenedInput)
-    layer2 = layers.Dense(500, activation = 'relu')(layer1)
+    layer2 = layers.Dense(500, activation = 'tanh')(layer1)
     layer3 = layers.Dense(500, activation = 'relu')(layer2)
     layer4 = layers.Dense(500, activation = 'relu')(layer3)
-    layer5 = layers.Dense(500, activation = 'relu')(layer4)
+    layer5 = layers.Dense(500, activation = 'tanh')(layer4)
     layer6 = layers.Dense(500, activation = 'relu')(layer5)
     layer7 = layers.Dense(500, activation = 'relu')(layer6)
-    layer8 = layers.Dense(200, activation = 'relu')(layer7)
+    layer8 = layers.Dense(200, activation = 'tanh')(layer7)
     layer9 = layers.Dense(100, activation = 'relu')(layer8)
     lastLayer_player1 = layers.Dense(PURE_STRATEGIES_PER_PLAYER)(layer9)
     lastLayer_player2 = layers.Dense(PURE_STRATEGIES_PER_PLAYER)(layer9)
@@ -136,8 +136,13 @@ def main():
     #Defining the NN model
     nn_model = keras.Model(inputs = nn_Input, outputs = nn_Output)
     
+    # Create the optimizer
+    keras.optimizers.SGD(learning_rate=0.1)
+
     #Compiling the NN model
-    nn_model.compile(loss = lossFunction(nn_Input, WEIGHT_EQUILIBRIA_DISTANCE, WEIGHT_PAYOFF_DIFFERENCE), optimizer = 'adam', metrics = ['mse'])
+    nn_model.compile(   loss = lossFunction(nn_Input, WEIGHT_EQUILIBRIA_DISTANCE, WEIGHT_PAYOFF_DIFFERENCE), 
+                        optimizer = 'adam', 
+                        metrics = ['mse'])
 
     #Printing the summary of the constructed model
     print(nn_model.summary())
@@ -146,14 +151,48 @@ def main():
     nn_model.fit(trainingSamples, trainingEqs, epochs = 100, batch_size = 32)
 
 
+def get_payoff(game, nash, num_options):
+    #Get equations for each player, and reshape them so that when they are multiplied together
+    # it creats a num_options by num_options matrix of the probabilities that a given payoff
+    # will be chosen
+    e_0 = K.gather(K.flatten(nash), K.arange(start=0,stop=3, step=1))
+    e_0 = K.reshape(e_0, (num_options,1))
+    e_1 = K.gather(K.flatten(nash), K.arange(start=3,stop=6, step=1))
+    e_1 = K.reshape(e_0, (1,num_options))
+    # e_1 = K.gather(nash, K.constant([1], dtype='int32'))
+    # e_1 = K.reshape(e_1, (1,num_options))
+
+    #Multiply them together to get the matrix
+    probability_mat = e_0 * e_1
+
+    #Reshape the matrix, so that concatenating with axis 0 produces the right thing
+    probability_mat = K.reshape(probability_mat, (1, num_options, num_options))
+
+    #Concatenate probability mat with itself to get a tensor with shape (2, num_options, num_options)
+    #   This is explicit for 2 players. Adding more will be more complicated and I don't want to 
+    #   deal with that right now
+    probability_mat = K.concatenate([probability_mat, probability_mat], axis=0)
+
+    #Multiply the probability matrix by the game (payoffs) to get the expected payoffs
+    #   for each player
+    exp_payoff_mat = game * probability_mat
+
+    #Sum the expected payoff matrix for each player (eg: (2,3,3)->(2,1))
+    payoffs = K.sum(K.sum(exp_payoff_mat, axis=1), axis=1)
+
+    return payoffs
+
+
 '''****************************'''
-def lossFunction(game, weight_EqDistance, weight_payoffDiff):
+def lossFunction(games, weight_distance, weight_payoff_diff):
     '''
     Function to compute the loss.
     It is equal to weighted Euclidean distance of nash equilibria + weighted difference of payoffs resulting from the nash equilibria
     '''
     
     def enclosedLossFunction(nashEq_true, nashEq_pred):
+        #Explicitly defined number of options because fuck, but at least it's a variable
+        num_options = 3
         #Computing Euclidean distance of nash equilibria
         #L2Distance_nashEqs = K.sqrt(K.sum(K.square(nashEq_true - nashEq_pred)))
         
@@ -182,7 +221,24 @@ def lossFunction(game, weight_EqDistance, weight_payoffDiff):
         #     final = total
 
         # return final
-        loss = K.min(K.sqrt(K.sum(K.square(nashEq_true - nashEq_pred))))
+        #loss_distance = K.min(K.sqrt(K.sum(K.square(nashEq_true - nashEq_pred))))
+        #Calculate distance loss and find the index of the minimum distance label
+        sq_diff = K.square(nashEq_true - nashEq_pred)
+        distances = K.sqrt(K.sum(K.sum(sq_diff, axis=1), axis=1))
+        index_dist = K.cast(K.argmin(distances), dtype='int32')
+        loss_distance = K.gather(distances, index_dist)
+        # loss_distance = distances[index_dist]
+        
+        #Get minimum distance nash equilibrium true
+        nash_true_payoff = K.gather(nashEq_true, index_dist)
+        payoff_true = get_payoff(games, nash_true_payoff, num_options)
+        payoff_pred = get_payoff(games, nashEq_pred[0], num_options)
+
+        #Find the difference between predicted and true payoffs
+        payoff_sq_diff = K.square(payoff_true - payoff_pred)
+        loss_payoff_distance = K.sqrt(K.sum(payoff_sq_diff))
+
+        loss = weight_distance * loss_distance + weight_payoff_diff * loss_payoff_distance
 
         return loss
     
