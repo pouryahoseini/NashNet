@@ -114,9 +114,9 @@ def generate_dataset(num_games=1000, max_nashes=10, players=2, options=3):
 # df.to_csv("million-val.csv")
 
 # print(num_degen)
-g, n = generate_dataset(num_games=1000000)
-np.save("Validation", g)
-np.save("Validation-Labels", n)
+g, n = generate_dataset(num_games=50000000)
+np.save("50M", g)
+np.save("50M-Labels", n)
 
 # for i in range(n.shape[0]):
 # 	print(n[i])

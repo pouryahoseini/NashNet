@@ -16,3 +16,4 @@ matplotlib
 psutil
 GPUtil
 configparser
+nashpy
