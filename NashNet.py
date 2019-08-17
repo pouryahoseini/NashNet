@@ -33,10 +33,13 @@ NUMBER_OF_TESTS_SAMPLES = 50000
 VALIDATION_SPLIT = 0.2
 
 #Dataset and Output
-DATASET_GAMES_FILES = ['Dataset-1_Games_1M.npy', 'Dataset-2_Games_1M.npy']
-DATASET_EQUILIBRIA_FILES = ['Dataset-1_Equilibria_1M.npy', 'Dataset-2_Equilibria_1M.npy']
+DATASET_GAMES_FILES = ['Dataset-1_Games_2P-3x3_1M.npy', 'Dataset-2_Games_2P-3x3_1M.npy']
+DATASET_EQUILIBRIA_FILES = ['Dataset-1_Equilibria_2P-3x3_1M.npy', 'Dataset-2_Equilibria_2P-3x3_1M.npy']
 SAVED_MODEL_ARCHITECTURE_FILE = 'modelArchitecture'
 SAVED_MODEL_WEIGHTS_FILE = 'modelWeights'
+TRAINING_HISTORY_FILE = 'training_history.csv'
+TEST_RESULTS_FILE = 'test_results.csv'
+EXAMPLES_PRINT_FILE = 'printed_examples.txt'
 NUMBER_OF_EXAMPLES = 2
 
 #********************************
@@ -65,55 +68,46 @@ def main():
     
     #Constructing the neural network
     #Input layer
-    nn_Input = layers.Input(shape = (PLAYER_NUMBER, PURE_STRATEGIES_PER_PLAYER, PURE_STRATEGIES_PER_PLAYER))
-    flattenedInput = layers.Flatten(input_shape=(PLAYER_NUMBER, PURE_STRATEGIES_PER_PLAYER, PURE_STRATEGIES_PER_PLAYER))(nn_Input)
+
+    nn_Input = layers.Input(shape = tuple((PLAYER_NUMBER,) + tuple(PURE_STRATEGIES_PER_PLAYER for _ in range(PLAYER_NUMBER))))
+    flattenedInput = layers.Flatten(input_shape = tuple((PLAYER_NUMBER,) + tuple(PURE_STRATEGIES_PER_PLAYER for _ in range(PLAYER_NUMBER))))(nn_Input)
     
     #Fully-connected layers
-    layer1 = layers.Dense(200, activation = 'relu')(flattenedInput)
-    layer2 = layers.Dense(500, activation = 'relu')(layer1)
-    
+    layer1 = layers.Dense(20, activation = 'relu')(flattenedInput)
+    layer2 = layers.Dense(50, activation = 'relu')(layer1)
 #     layer2do = layers.Dropout(0.2)(layer2)
-    
-    layer3 = layers.Dense(500, activation = 'relu')(layer2)
-    
+    layer3 = layers.Dense(50, activation = 'relu')(layer2)
 #     layer3do = layers.Dropout(0.2)(layer3)
-    
-    layer4 = layers.Dense(500, activation = 'relu')(layer3)
-    
+    layer4 = layers.Dense(50, activation = 'relu')(layer3)
 #     layer4do = layers.Dropout(0.2)(layer4)
-    
-    layer5 = layers.Dense(500, activation = 'relu')(layer4)
-    
+    layer5 = layers.Dense(50, activation = 'relu')(layer4)
 #     layer5do = layers.Dropout(0.2)(layer5)
-    
-    layer6 = layers.Dense(500, activation = 'relu')(layer5)
-    
+    layer6 = layers.Dense(50, activation = 'relu')(layer5)
 #     layer6do = layers.Dropout(0.2)(layer6)
-    
-    layer7 = layers.Dense(500, activation = 'relu')(layer6)
-    
+    layer7 = layers.Dense(50, activation = 'relu')(layer6)
 #     layer7do = layers.Dropout(0.2)(layer7)
-    
+
 #     layer7a = layers.Dense(50, activation = 'relu')(layer7)
 #     layer7b = layers.Dense(50, activation = 'relu')(layer7a)
 #     layer7c = layers.Dense(50, activation = 'relu')(layer7b)
 #     layer7d = layers.Dense(50, activation = 'relu')(layer7c)
 #     layer7e = layers.Dense(50, activation = 'relu')(layer7d)
-    
-    layer8 = layers.Dense(200, activation = 'relu')(layer7)
-    
+
+    layer8 = layers.Dense(20, activation = 'relu')(layer7)
 #     layer8do = layers.Dropout(0.2)(layer8)
+    layer9 = layers.Dense(10, activation = 'relu')(layer8)
     
-    layer9 = layers.Dense(100, activation = 'relu')(layer8)
-    lastLayer_player1 = layers.Dense(PURE_STRATEGIES_PER_PLAYER)(layer9)
-    lastLayer_player2 = layers.Dense(PURE_STRATEGIES_PER_PLAYER)(layer9)
+    lastLayer_player = [layers.Dense(PURE_STRATEGIES_PER_PLAYER)(layer9)]
+    for _ in range(1, PLAYER_NUMBER):
+        lastLayer_player.append(layers.Dense(PURE_STRATEGIES_PER_PLAYER)(layer9))
 
     #Softmax layers. Two for the two players
-    softmax1 = layers.Activation('softmax')(lastLayer_player1)
-    softmax2 = layers.Activation('softmax')(lastLayer_player2)
+    softmax = [layers.Activation('softmax')(lastLayer_player[0])]
+    for playerCounter in range(1, PLAYER_NUMBER):
+        softmax.append(layers.Activation('softmax')(lastLayer_player[playerCounter]))
     
     #Output layer
-    concatenated_output = layers.concatenate([softmax1, softmax2])
+    concatenated_output = layers.concatenate([softmax[pl] for pl in range(PLAYER_NUMBER)])
     replicated_output = layers.concatenate([concatenated_output for i in range(MAXIMUM_EQUILIBRIA_PER_GAME)])
     nn_Output = layers.Reshape((MAXIMUM_EQUILIBRIA_PER_GAME, PLAYER_NUMBER, PURE_STRATEGIES_PER_PLAYER))(replicated_output)
     
@@ -131,15 +125,19 @@ def main():
     print(nn_model.summary())
     
     #Train the NN model
-    nn_model.fit(trainingSamples, trainingEqs, validation_split = VALIDATION_SPLIT, epochs = EPOCHS, batch_size = BATCH_SIZE, shuffle = True)
+    trainingHistory = nn_model.fit(trainingSamples, trainingEqs, validation_split = VALIDATION_SPLIT, epochs = EPOCHS, batch_size = BATCH_SIZE, shuffle = True)
     
     #Test the trained model
-    nn_model.evaluate(testSamples, testEqs, batch_size = 256)
+    evaluationResults = nn_model.evaluate(testSamples, testEqs, batch_size = 256)
     
     #Save the model
     with open(SAVED_MODEL_ARCHITECTURE_FILE + '.json', 'w') as json_file:
         json_file.write(nn_model.to_json())
     nn_model.save_weights(SAVED_MODEL_WEIGHTS_FILE + '.h5')
+    
+    #Write the loss and metric values during the training and test time
+    pd.DataFrame(trainingHistory.history).to_csv(TRAINING_HISTORY_FILE)
+    pd.DataFrame([nn_model.metrics_names, evaluationResults]).to_csv(TEST_RESULTS_FILE, index = False)
     
     #Print some examples of predictions
     printExamples(NUMBER_OF_EXAMPLES, testSamples, testEqs, nn_model)
@@ -210,11 +208,10 @@ def lossFunction(game, weight_EqDiff, weight_payoffDiff, pureStrategies_perPlaye
     
     return enclosedLossFunction
 
-
 #********************************
 def computePayoff(game, equilibrium, pureStrategies_perPlayer):
     '''
-    Function to compute the payoff each player gets with the input equilibrium and the input game.
+    Function to compute the payoff each player gets with the input equilibrium and the input game (2 player games).
     '''
     
     #Extract mix strategies of each player
@@ -225,6 +222,38 @@ def computePayoff(game, equilibrium, pureStrategies_perPlayer):
     
     #Multiply them together to get the probability matrix
     probability_mat = mixStrategies_p1 * mixStrategies_p2
+    
+    #Adding a new dimension
+    probability_mat = K.expand_dims(probability_mat, axis = 1)
+
+    #Concatenate probability mat with itself to get a tensor with shape (2, pureStrategies_perPlayer, pureStrategies_perPlayer)
+    probability_mat = K.concatenate([probability_mat, probability_mat], axis = 1)
+
+    #Multiply the probability matrix by the game (payoffs) to get the expected payoffs for each player
+    expectedPayoff_mat = game * probability_mat
+
+    #Sum the expected payoff matrix for each player (eg: (Batch_Size, 2,3,3)->(Batch_Size, 2,1))
+    payoffs = K.sum(expectedPayoff_mat, axis = [2, 3])
+
+    return payoffs
+
+
+#********************************
+def computePayoff_np(game, equilibrium, pureStrategies_perPlayer, playerNumber):
+    '''
+    Function to compute the payoff each player gets with the input equilibrium and the input game (games with more than 2 players).
+    '''    
+    
+    #Extract mix strategies of each player
+    mixStrategies_perPlayer = [tf.gather(equilibrium, 0, axis = 1) for pl in range(playerNumber)]
+    playerProbShape_grid = tuple(np.ones(playerNumber) + np.identity(playerNumber) * (pureStrategies_perPlayer - 1))
+    playerProbShape = [tuple((tf.shape(mixStrategies_perPlayer[0])[0], ) + tuple(playerProbShape_grid[pl])) for pl in range(playerNumber)]
+    mixStrategies_perPlayer = [K.reshape(mixStrategies_perPlayer[pl], playerProbShape[pl]) for pl in range(playerNumber)]
+
+    #Multiply them together to get the probability matrix
+    probability_mat = mixStrategies_perPlayer[0]
+    for pl in range(1, playerNumber):
+        probability_mat *= mixStrategies_perPlayer[pl]
 
     #Adding a new dimension
     probability_mat = K.expand_dims(probability_mat, axis = 1)
@@ -325,6 +354,9 @@ def printExamples(numberOfExamples, testSamples, testEqs, nn_model):
     #Predicting a Nash equilibrium for the example game
     nash_predicted = nn_model.predict(exampleGame)
 
+    #Open file for writing the results into
+    printFile = open(EXAMPLES_PRINT_FILE, "w")
+    
     for exampleCounter in range(numberOfExamples):
         #Computing the loss
         lossFunction_instance = lossFunction(exampleGame[exampleCounter], WEIGHT_EQUILIBRIA_DISTANCE, WEIGHT_PAYOFF_DIFFERENCE, PURE_STRATEGIES_PER_PLAYER)
@@ -335,9 +367,15 @@ def printExamples(numberOfExamples, testSamples, testEqs, nn_model):
         
         #Printing the results for the example game
         listOfTrueEquilibria = [distinctive_NashEquilibria[i] for i in range(len(distinctive_NashEquilibria))]
-        print(("\n\n______________\nExample {}:\nTrue: \n" + ("{}\n" * len(distinctive_NashEquilibria)) + "\nPredicted: \n{}\n\nLoss: {}\n") \
-              .format(* ([exampleCounter + 1] + listOfTrueEquilibria + list([nash_predicted[exampleCounter, 0]]) + [K.get_value(loss)])).replace("array", ""))
-
+        printString = ("\n______________\nExample {}:\nTrue: \n" + ("{}\n" * len(distinctive_NashEquilibria)) + "\nPredicted: \n{}\n\nLoss: {}\n\n") \
+              .format(* ([exampleCounter + 1] + listOfTrueEquilibria + list([nash_predicted[exampleCounter, 0]]) + [K.get_value(loss)])).replace("array", "")
+        print(printString)
+        
+        #Write the string to the file
+        printFile.write(printString)
+    
+    printFile.close()
+    
     return 
 
 #********************************
