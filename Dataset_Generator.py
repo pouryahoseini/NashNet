@@ -10,13 +10,13 @@ warnings.filterwarnings("error")
 #Global Variables
 GENERATED_GAMES_DATASET_NAME = 'Games'
 GENERATED_EQUILIBRIA_DATASET_NAME = 'Equilibria'
-NUMBER_OF_SAMPLES = 1000000
+NUMBER_OF_SAMPLES = 300000
 
 MAXIMUM_EQUILIBRIA_PER_GAME = 10
 PLAYER_NUMBER = 2
 PURE_STRATEGIES_PER_PLAYER = 3
 
-DISCARD_NON_MIXED_STRATEGY_GAMES = False
+DISCARD_NON_MIXED_STRATEGY_GAMES = True
 FILTER_PURE_STRATEGIES = False
 
 
@@ -127,7 +127,7 @@ def generate_dataset(num_games = NUMBER_OF_SAMPLES, max_nashes = MAXIMUM_EQUILIB
 	
 	while(count < num_games):
 		if (count % 250 == 0) and not printed:
-			print("Generated {} games in {} seconds with {} degenerate games.".format(count, time.time() - start, num_degen))
+			print("Generated {} games in {} seconds with {} degenerate games.".format(count, int(time.time() - start), num_degen))
 			printed = True
 			
 		#Put game generation in a try statement and catch runtime warning if
@@ -170,7 +170,7 @@ def generate_dataset(num_games = NUMBER_OF_SAMPLES, max_nashes = MAXIMUM_EQUILIB
 # 			print("Error - game is degenerate")
 
 	#Print
-	print("Generated {} games in {} seconds with {} degenerate games.".format(count, time.time() - start, num_degen))
+	print("Generated {} games in {} seconds with {} degenerate games.".format(count, int(time.time() - start), num_degen))
 
 	#Return games, nashes
 	return games, nashes
