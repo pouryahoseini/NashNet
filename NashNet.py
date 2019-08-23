@@ -28,13 +28,13 @@ BATCH_SIZE = 128
 EPOCHS = 500
 
 #Training Strategy
-NUMBER_OF_TRAINING_SAMPLES = 100000
-NUMBER_OF_TESTS_SAMPLES = 50000
+NUMBER_OF_TRAINING_SAMPLES = 290000
+NUMBER_OF_TESTS_SAMPLES = 10000
 VALIDATION_SPLIT = 0.2
 
 #Dataset and Output
-DATASET_GAMES_FILES = ['Dataset-1_Games_2P-3x3_1M.npy', 'Dataset-2_Games_2P-3x3_1M.npy']
-DATASET_EQUILIBRIA_FILES = ['Dataset-1_Equilibria_2P-3x3_1M.npy', 'Dataset-2_Equilibria_2P-3x3_1M.npy']
+DATASET_GAMES_FILES = ['Dataset-DiscardedPure-1_Games_2P-3x3_1M.npy.npy'] #['Dataset-1_Games_2P-3x3_1M.npy', 'Dataset-2_Games_2P-3x3_1M.npy']
+DATASET_EQUILIBRIA_FILES = ['Dataset-DiscardedPure-1_Equilibria_2P-3x3_1M.npy'] #['Dataset-1_Equilibria_2P-3x3_1M.npy', 'Dataset-2_Equilibria_2P-3x3_1M.npy']
 SAVED_MODEL_ARCHITECTURE_FILE = 'modelArchitecture'
 SAVED_MODEL_WEIGHTS_FILE = 'modelWeights'
 TRAINING_HISTORY_FILE = 'training_history.csv'
