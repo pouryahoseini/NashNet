@@ -5,6 +5,7 @@ from tensorflow import keras
 from tensorflow.keras import layers
 import tensorflow.keras.backend as K
 import ast
+import os
 import pandas as pd
 import nashpy as nash
 import random
@@ -301,11 +302,20 @@ def readDatasets():
     #Indexing:
     #trainingSamples: [sample #] [player #] [row # of the game] [column # of the game]
     #trainingEqs: [sample #] [equilibrium #] [player #] [pure strategy #]
+    
+    #Create arrays with predefined sizes
     sampleGames = np.zeros((0, PLAYER_NUMBER, PURE_STRATEGIES_PER_PLAYER, PURE_STRATEGIES_PER_PLAYER))
     sampleEquilibria = np.zeros((0, MAXIMUM_EQUILIBRIA_PER_GAME, PLAYER_NUMBER, PURE_STRATEGIES_PER_PLAYER))
     
+    #Set where to look for the dataset files
+    directory = './Datasets/' + str(PLAYER_NUMBER) + 'P/' + str(PURE_STRATEGIES_PER_PLAYER) + 'x' + str(PURE_STRATEGIES_PER_PLAYER) + '/'
+    if not os.path.isdir(directory):
+        print('\n\nError: The dataset directory does not exist.\n\n')
+        exit()
+    
+    #Read the dataset files in npy format
     for gamesDataset, equilibriaDataset in zip(DATASET_GAMES_FILES, DATASET_EQUILIBRIA_FILES):
-        sampleGames_temp, sampleEquilibria_temp = GetTrainingDataFromNPY('./Datasets/' + gamesDataset, './Datasets/' + equilibriaDataset)
+        sampleGames_temp, sampleEquilibria_temp = GetTrainingDataFromNPY(directory + gamesDataset, directory + equilibriaDataset)
         sampleGames = np.append(sampleGames, sampleGames_temp, axis = 0)
         sampleEquilibria = np.append(sampleEquilibria, sampleEquilibria_temp, axis = 0)
     
