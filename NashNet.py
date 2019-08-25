@@ -29,13 +29,13 @@ BATCH_SIZE = 128
 EPOCHS = 500
 
 #Training Strategy
-NUMBER_OF_TRAINING_SAMPLES = 290000
-NUMBER_OF_TESTS_SAMPLES = 10000
+NUMBER_OF_TRAINING_SAMPLES = 1700000
+NUMBER_OF_TESTS_SAMPLES = 300000
 VALIDATION_SPLIT = 0.2
 
 #Dataset and Output
-DATASET_GAMES_FILES = ['Dataset-DiscardedPure-1_Games_2P-3x3_1M.npy.npy'] #['Dataset-1_Games_2P-3x3_1M.npy', 'Dataset-2_Games_2P-3x3_1M.npy']
-DATASET_EQUILIBRIA_FILES = ['Dataset-DiscardedPure-1_Equilibria_2P-3x3_1M.npy'] #['Dataset-1_Equilibria_2P-3x3_1M.npy', 'Dataset-2_Equilibria_2P-3x3_1M.npy']
+DATASET_GAMES_FILES = ['Dataset-DiscardedPure-1_Games_2P-3x3_1M.npy.npy', 'Dataset-1_Games_2P-3x3_1M.npy'] #['Dataset-2_Games_2P-3x3_1M.npy']
+DATASET_EQUILIBRIA_FILES = ['Dataset-DiscardedPure-1_Equilibria_2P-3x3_1M.npy', 'Dataset-1_Equilibria_2P-3x3_1M.npy'] #['Dataset-2_Equilibria_2P-3x3_1M.npy']
 SAVED_MODEL_ARCHITECTURE_FILE = 'modelArchitecture'
 SAVED_MODEL_WEIGHTS_FILE = 'modelWeights'
 TRAINING_HISTORY_FILE = 'training_history.csv'
@@ -54,6 +54,9 @@ def main():
     #trainingSamples: [sample #] [player #] [row # of the game] [column # of the game]
     #trainingEqs: [sample #] [equilibrium #] [player #] [pure strategy #]
     sampleGames, sampleEquilibria = readDatasets()
+    
+    #Shuffle the dataset arrays
+    sampleGames, sampleEquilibria = unisonShuffle(sampleGames, sampleEquilibria)
 
     #Extract the training and test data
     trainingSamples = sampleGames[ : NUMBER_OF_TRAINING_SAMPLES]
@@ -269,6 +272,18 @@ def computePayoff_np(game, equilibrium, pureStrategies_perPlayer, playerNumber):
     payoffs = K.sum(expectedPayoff_mat, axis = [2, 3])
 
     return payoffs
+
+#********************************
+def unisonShuffle(a, b):
+    '''
+    Function to shuffle two numpy arrays in unison
+    '''
+    
+    assert a.shape[0] == b.shape[0]
+    
+    p = np.random.permutation(a.shape[0])
+    
+    return a[p], b[p]
 
 #********************************
 def GetTrainingDatafromCSV(filename):
