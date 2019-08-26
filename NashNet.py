@@ -25,7 +25,8 @@ WEIGHT_PAYOFF_DIFFERENCE = 0.5
 
 #Neural Network Training
 LEARNING_RATE = 0.01
-BATCH_SIZE = 128
+MOMENTUM = 0.99
+BATCH_SIZE = 1024
 EPOCHS = 500
 
 #Training Strategy
@@ -34,8 +35,8 @@ NUMBER_OF_TESTS_SAMPLES = 300000
 VALIDATION_SPLIT = 0.2
 
 #Dataset and Output
-DATASET_GAMES_FILES = ['Dataset-DiscardedPure-1_Games_2P-3x3_1M.npy.npy', 'Dataset-1_Games_2P-3x3_1M.npy'] #['Dataset-2_Games_2P-3x3_1M.npy']
-DATASET_EQUILIBRIA_FILES = ['Dataset-DiscardedPure-1_Equilibria_2P-3x3_1M.npy', 'Dataset-1_Equilibria_2P-3x3_1M.npy'] #['Dataset-2_Equilibria_2P-3x3_1M.npy']
+DATASET_GAMES_FILES = ['Dataset-DiscardedPure-1_Games_2P-3x3_1M.npy.npy', 'Dataset-DiscardedPure-2_Games_2P-3x3_1M.npy.npy'] #['Dataset-1_Games_2P-3x3_1M.npy'] #['Dataset-2_Games_2P-3x3_1M.npy']
+DATASET_EQUILIBRIA_FILES = ['Dataset-DiscardedPure-1_Equilibria_2P-3x3_1M.npy', 'Dataset-DiscardedPure-2_Equilibria_2P-3x3_1M.npy'] #['Dataset-1_Equilibria_2P-3x3_1M.npy'] #['Dataset-2_Equilibria_2P-3x3_1M.npy']
 SAVED_MODEL_ARCHITECTURE_FILE = 'modelArchitecture'
 SAVED_MODEL_WEIGHTS_FILE = 'modelWeights'
 TRAINING_HISTORY_FILE = 'training_history.csv'
@@ -65,16 +66,16 @@ def main():
     testEqs = sampleEquilibria[NUMBER_OF_TRAINING_SAMPLES : NUMBER_OF_TRAINING_SAMPLES + NUMBER_OF_TESTS_SAMPLES]
     
     #Normalize the games
-    trainingSamples = (trainingSamples - np.reshape(np.min(trainingSamples, axis = (1, 2, 3)), (trainingSamples.shape[0], 1, 1, 1))) / np.reshape(np.max(trainingSamples, axis = (1, 2, 3)) - np.min(trainingSamples, axis = (1, 2, 3)), (trainingSamples.shape[0], 1, 1, 1))
-    testSamples = (testSamples - np.reshape(np.min(testSamples, axis = (1, 2, 3)), (testSamples.shape[0], 1, 1, 1))) / np.reshape(np.max(testSamples, axis = (1, 2, 3)) - np.min(testSamples, axis = (1, 2, 3)), (testSamples.shape[0], 1, 1, 1))
+#     trainingSamples = (trainingSamples - np.reshape(np.min(trainingSamples, axis = (1, 2, 3)), (trainingSamples.shape[0], 1, 1, 1))) / np.reshape(np.max(trainingSamples, axis = (1, 2, 3)) - np.min(trainingSamples, axis = (1, 2, 3)), (trainingSamples.shape[0], 1, 1, 1))
+#     testSamples = (testSamples - np.reshape(np.min(testSamples, axis = (1, 2, 3)), (testSamples.shape[0], 1, 1, 1))) / np.reshape(np.max(testSamples, axis = (1, 2, 3)) - np.min(testSamples, axis = (1, 2, 3)), (testSamples.shape[0], 1, 1, 1))
 #     trainingSamples = (trainingSamples - np.reshape(np.average(trainingSamples, axis = (1, 2, 3)), (trainingSamples.shape[0], 1, 1, 1))) / np.reshape(np.std(trainingSamples, axis = (1, 2, 3)), (trainingSamples.shape[0], 1, 1, 1))
 #     testSamples = (testSamples - tf.reshape(np.average(testSamples, axis = (1, 2, 3)), (testSamples.shape[0], 1, 1, 1))) / np.reshape(np.std(testSamples, axis = (1, 2, 3)), (testSamples.shape[0], 1, 1, 1))
     
     #Constructing the neural network
     #Input layer
-
-    nn_Input = layers.Input(shape = tuple((PLAYER_NUMBER,) + tuple(PURE_STRATEGIES_PER_PLAYER for _ in range(PLAYER_NUMBER))))
-    flattenedInput = layers.Flatten(input_shape = tuple((PLAYER_NUMBER,) + tuple(PURE_STRATEGIES_PER_PLAYER for _ in range(PLAYER_NUMBER))))(nn_Input)
+    inputShape = tuple((PLAYER_NUMBER,) + tuple(PURE_STRATEGIES_PER_PLAYER for _ in range(PLAYER_NUMBER)))
+    nn_Input = layers.Input(shape = inputShape)
+    flattenedInput = layers.Flatten(input_shape = inputShape)(nn_Input)
     
     #Fully-connected layers
     layer1 = layers.Dense(20, activation = 'relu')(flattenedInput)
@@ -91,13 +92,13 @@ def main():
     layer7 = layers.Dense(50, activation = 'relu')(layer6)
 #     layer7do = layers.Dropout(0.2)(layer7)
 
-#     layer7a = layers.Dense(50, activation = 'relu')(layer7)
-#     layer7b = layers.Dense(50, activation = 'relu')(layer7a)
-#     layer7c = layers.Dense(50, activation = 'relu')(layer7b)
-#     layer7d = layers.Dense(50, activation = 'relu')(layer7c)
-#     layer7e = layers.Dense(50, activation = 'relu')(layer7d)
+    layer7a = layers.Dense(50, activation = 'relu')(layer7)
+    layer7b = layers.Dense(50, activation = 'relu')(layer7a)
+    layer7c = layers.Dense(50, activation = 'relu')(layer7b)
+    layer7d = layers.Dense(50, activation = 'relu')(layer7c)
+    layer7e = layers.Dense(50, activation = 'relu')(layer7d)
 
-    layer8 = layers.Dense(20, activation = 'relu')(layer7)
+    layer8 = layers.Dense(20, activation = 'relu')(layer7e)
 #     layer8do = layers.Dropout(0.2)(layer8)
     layer9 = layers.Dense(10, activation = 'relu')(layer8)
     
@@ -119,7 +120,7 @@ def main():
     nn_model = keras.Model(inputs = nn_Input, outputs = nn_Output)
     
     # Create the optimizer
-    Optimizer = keras.optimizers.SGD(learning_rate = LEARNING_RATE)
+    Optimizer = keras.optimizers.SGD(learning_rate = LEARNING_RATE, momentum = MOMENTUM, nesterov = True)
 
     #Compiling the NN model
     nn_model.compile(loss = lossFunction(nn_Input, WEIGHT_EQUILIBRIA_DISTANCE, WEIGHT_PAYOFF_DIFFERENCE, PURE_STRATEGIES_PER_PLAYER), optimizer = Optimizer, 
@@ -140,7 +141,9 @@ def main():
     nn_model.save_weights(SAVED_MODEL_WEIGHTS_FILE + '.h5')
     
     #Write the loss and metric values during the training and test time
-    pd.DataFrame(trainingHistory.history).to_csv(TRAINING_HISTORY_FILE)
+    trainingHistory_dataFrame = pd.DataFrame(trainingHistory.history)
+    trainingHistory_dataFrame.index += 1
+    trainingHistory_dataFrame.to_csv(TRAINING_HISTORY_FILE)
     pd.DataFrame([nn_model.metrics_names, evaluationResults]).to_csv(TEST_RESULTS_FILE, index = False)
     
     #Print some examples of predictions

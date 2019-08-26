@@ -14,6 +14,9 @@ NN_MODEL_FILE = './savedModel.hdf5'
 #Read datasets
 sampleGames, sampleEquilibria = readDatasets()
 
+#Shuffle the dataset arrays
+sampleGames, sampleEquilibria = unisonShuffle(sampleGames, sampleEquilibria)
+
 #Extract the test data
 testSamples = sampleGames[NUMBER_OF_TRAINING_SAMPLES : NUMBER_OF_TRAINING_SAMPLES + NUMBER_OF_TESTS_SAMPLES]
 testEqs = sampleEquilibria[NUMBER_OF_TRAINING_SAMPLES : NUMBER_OF_TRAINING_SAMPLES + NUMBER_OF_TESTS_SAMPLES]
