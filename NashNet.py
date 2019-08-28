@@ -25,24 +25,29 @@ WEIGHT_PAYOFF_DIFFERENCE = 0.5
 
 #Neural Network Training
 LEARNING_RATE = 0.01
-MOMENTUM = 0.99
+MOMENTUM = 0.9
 BATCH_SIZE = 1024
 EPOCHS = 500
 
 #Training Strategy
-NUMBER_OF_TRAINING_SAMPLES = 1700000
+NUMBER_OF_TRAINING_SAMPLES = 2700000
 NUMBER_OF_TESTS_SAMPLES = 300000
-VALIDATION_SPLIT = 0.2
+VALIDATION_SPLIT = 0.1
 
 #Dataset and Output
-DATASET_GAMES_FILES = ['Dataset-DiscardedPure-1_Games_2P-3x3_1M.npy.npy', 'Dataset-DiscardedPure-2_Games_2P-3x3_1M.npy.npy'] #['Dataset-1_Games_2P-3x3_1M.npy'] #['Dataset-2_Games_2P-3x3_1M.npy']
-DATASET_EQUILIBRIA_FILES = ['Dataset-DiscardedPure-1_Equilibria_2P-3x3_1M.npy', 'Dataset-DiscardedPure-2_Equilibria_2P-3x3_1M.npy'] #['Dataset-1_Equilibria_2P-3x3_1M.npy'] #['Dataset-2_Equilibria_2P-3x3_1M.npy']
+DATASET_GAMES_FILES = ['Dataset-DiscardedPure-1_Games_2P-3x3_1M.npy.npy', 'Dataset-DiscardedPure-2_Games_2P-3x3_1M.npy.npy', 'Dataset-1_Games_2P-3x3_1M.npy'] #['Dataset-2_Games_2P-3x3_1M.npy']
+DATASET_EQUILIBRIA_FILES = ['Dataset-DiscardedPure-1_Equilibria_2P-3x3_1M.npy', 'Dataset-DiscardedPure-2_Equilibria_2P-3x3_1M.npy', 'Dataset-1_Equilibria_2P-3x3_1M.npy'] #['Dataset-2_Equilibria_2P-3x3_1M.npy']
+NORMALIZE_INPUT_DATA = False
+NUMBER_OF_EXAMPLES = 2
+#File Names
 SAVED_MODEL_ARCHITECTURE_FILE = 'modelArchitecture'
 SAVED_MODEL_WEIGHTS_FILE = 'modelWeights'
 TRAINING_HISTORY_FILE = 'training_history.csv'
 TEST_RESULTS_FILE = 'test_results.csv'
 EXAMPLES_PRINT_FILE = 'printed_examples.txt'
-NUMBER_OF_EXAMPLES = 2
+SAVED_TEST_GAMES_FILE = 'Test_Games.npy'
+SAVED_TEST_EQUILIBRIA_FILE = 'Test_Equilibria.npy'
+
 
 #********************************
 def main():
@@ -66,10 +71,9 @@ def main():
     testEqs = sampleEquilibria[NUMBER_OF_TRAINING_SAMPLES : NUMBER_OF_TRAINING_SAMPLES + NUMBER_OF_TESTS_SAMPLES]
     
     #Normalize the games
-#     trainingSamples = (trainingSamples - np.reshape(np.min(trainingSamples, axis = (1, 2, 3)), (trainingSamples.shape[0], 1, 1, 1))) / np.reshape(np.max(trainingSamples, axis = (1, 2, 3)) - np.min(trainingSamples, axis = (1, 2, 3)), (trainingSamples.shape[0], 1, 1, 1))
-#     testSamples = (testSamples - np.reshape(np.min(testSamples, axis = (1, 2, 3)), (testSamples.shape[0], 1, 1, 1))) / np.reshape(np.max(testSamples, axis = (1, 2, 3)) - np.min(testSamples, axis = (1, 2, 3)), (testSamples.shape[0], 1, 1, 1))
-#     trainingSamples = (trainingSamples - np.reshape(np.average(trainingSamples, axis = (1, 2, 3)), (trainingSamples.shape[0], 1, 1, 1))) / np.reshape(np.std(trainingSamples, axis = (1, 2, 3)), (trainingSamples.shape[0], 1, 1, 1))
-#     testSamples = (testSamples - tf.reshape(np.average(testSamples, axis = (1, 2, 3)), (testSamples.shape[0], 1, 1, 1))) / np.reshape(np.std(testSamples, axis = (1, 2, 3)), (testSamples.shape[0], 1, 1, 1))
+    if NORMALIZE_INPUT_DATA:
+        trainingSamples = (trainingSamples - np.reshape(np.min(trainingSamples, axis = (1, 2, 3)), (trainingSamples.shape[0], 1, 1, 1))) / np.reshape(np.max(trainingSamples, axis = (1, 2, 3)) - np.min(trainingSamples, axis = (1, 2, 3)), (trainingSamples.shape[0], 1, 1, 1))
+        testSamples = (testSamples - np.reshape(np.min(testSamples, axis = (1, 2, 3)), (testSamples.shape[0], 1, 1, 1))) / np.reshape(np.max(testSamples, axis = (1, 2, 3)) - np.min(testSamples, axis = (1, 2, 3)), (testSamples.shape[0], 1, 1, 1))
     
     #Constructing the neural network
     #Input layer
@@ -78,29 +82,34 @@ def main():
     flattenedInput = layers.Flatten(input_shape = inputShape)(nn_Input)
     
     #Fully-connected layers
-    layer1 = layers.Dense(20, activation = 'relu')(flattenedInput)
-    layer2 = layers.Dense(50, activation = 'relu')(layer1)
-#     layer2do = layers.Dropout(0.2)(layer2)
-    layer3 = layers.Dense(50, activation = 'relu')(layer2)
-#     layer3do = layers.Dropout(0.2)(layer3)
-    layer4 = layers.Dense(50, activation = 'relu')(layer3)
-#     layer4do = layers.Dropout(0.2)(layer4)
-    layer5 = layers.Dense(50, activation = 'relu')(layer4)
-#     layer5do = layers.Dropout(0.2)(layer5)
-    layer6 = layers.Dense(50, activation = 'relu')(layer5)
-#     layer6do = layers.Dropout(0.2)(layer6)
-    layer7 = layers.Dense(50, activation = 'relu')(layer6)
-#     layer7do = layers.Dropout(0.2)(layer7)
+    layer1 = layers.Dense(200, activation = 'relu')(flattenedInput)
+    layer2 = layers.Dense(500, activation = 'relu')(layer1)
+#     layer2do = layers.Dropout(0.001)(layer2)
+    layer3 = layers.Dense(500, activation = 'relu')(layer2)
+#     layer3do = layers.Dropout(0.001)(layer3)
+    layer4 = layers.Dense(500, activation = 'relu')(layer3)
+#     layer4do = layers.Dropout(0.001)(layer4)
+    layer5 = layers.Dense(500, activation = 'relu')(layer4)
+#     layer5do = layers.Dropout(0.001)(layer5)
+    layer6 = layers.Dense(500, activation = 'relu')(layer5)
+#     layer6do = layers.Dropout(0.001)(layer6)
+    layer7 = layers.Dense(500, activation = 'relu')(layer6)
+#     layer7do = layers.Dropout(0.001)(layer7)
 
-    layer7a = layers.Dense(50, activation = 'relu')(layer7)
-    layer7b = layers.Dense(50, activation = 'relu')(layer7a)
-    layer7c = layers.Dense(50, activation = 'relu')(layer7b)
-    layer7d = layers.Dense(50, activation = 'relu')(layer7c)
-    layer7e = layers.Dense(50, activation = 'relu')(layer7d)
+    layer7a = layers.Dense(500, activation = 'relu')(layer7)
+#     layer7ado = layers.Dropout(0.001)(layer7a)
+    layer7b = layers.Dense(500, activation = 'relu')(layer7a)
+#     layer7bdo = layers.Dropout(0.001)(layer7b)
+    layer7c = layers.Dense(500, activation = 'relu')(layer7b)
+#     layer7cdo = layers.Dropout(0.001)(layer7c)
+    layer7d = layers.Dense(500, activation = 'relu')(layer7c)
+#     layer7ddo = layers.Dropout(0.001)(layer7d)
+    layer7e = layers.Dense(500, activation = 'relu')(layer7d)
+#     layer7edo = layers.Dropout(0.001)(layer7e)
 
-    layer8 = layers.Dense(20, activation = 'relu')(layer7e)
-#     layer8do = layers.Dropout(0.2)(layer8)
-    layer9 = layers.Dense(10, activation = 'relu')(layer8)
+    layer8 = layers.Dense(200, activation = 'relu')(layer7e)
+#     layer8do = layers.Dropout(0.001)(layer8)
+    layer9 = layers.Dense(100, activation = 'relu')(layer8)
     
     lastLayer_player = [layers.Dense(PURE_STRATEGIES_PER_PLAYER)(layer9)]
     for _ in range(1, PLAYER_NUMBER):
@@ -136,18 +145,14 @@ def main():
     evaluationResults = nn_model.evaluate(testSamples, testEqs, batch_size = 256)
     
     #Save the model
-    with open(SAVED_MODEL_ARCHITECTURE_FILE + '.json', 'w') as json_file:
-        json_file.write(nn_model.to_json())
-    nn_model.save_weights(SAVED_MODEL_WEIGHTS_FILE + '.h5')
+    saveModel(nn_model)
     
     #Write the loss and metric values during the training and test time
-    trainingHistory_dataFrame = pd.DataFrame(trainingHistory.history)
-    trainingHistory_dataFrame.index += 1
-    trainingHistory_dataFrame.to_csv(TRAINING_HISTORY_FILE)
-    pd.DataFrame([nn_model.metrics_names, evaluationResults]).to_csv(TEST_RESULTS_FILE, index = False)
+    saveHistory(trainingHistory, evaluationResults, nn_model)
     
     #Print some examples of predictions
     printExamples(NUMBER_OF_EXAMPLES, testSamples, testEqs, nn_model)
+    saveTestData(testSamples, testEqs)
     
 #********************************
 def MSE(nashEq_true, nashEq_pred):
@@ -312,6 +317,48 @@ def GetTrainingDataFromNPY(data_file, labels_file):
     return data, labels
 
 #********************************
+def saveModel(nnModel):
+    '''
+    Function to save the trained model
+    '''
+    
+    #Save model architecture
+    with open('./Model/' + SAVED_MODEL_ARCHITECTURE_FILE + '.json', 'w') as json_file:
+        json_file.write(nnModel.to_json())
+    
+    #Save model weights
+    nnModel.save_weights('./Model/' + SAVED_MODEL_WEIGHTS_FILE + '.h5')
+
+    return
+    
+#********************************
+def saveHistory(trainingHistory, evaluationResults, nn_model):
+    '''
+    Function to save the training history and evaluation results in two separate files
+    '''
+    
+    #Save training history
+    trainingHistory_dataFrame = pd.DataFrame(trainingHistory.history)
+    trainingHistory_dataFrame.index += 1
+    trainingHistory_dataFrame.to_csv('./Reports/' + TRAINING_HISTORY_FILE)
+    
+    #Save evaluation results
+    pd.DataFrame([nn_model.metrics_names, evaluationResults]).to_csv('./Reports/' + TEST_RESULTS_FILE, index = False)
+    
+    return
+
+#********************************
+def saveTestData(testSamples, testEqs):
+    '''
+    Function to save test data to reuse for evaluation purposes
+    '''
+    
+    np.save('./Reports/Saved_Test_Data/' + SAVED_TEST_GAMES_FILE, testSamples)
+    np.save('./Reports/Saved_Test_Data/' + SAVED_TEST_EQUILIBRIA_FILE, testEqs)
+    
+    return 
+
+#********************************
 def readDatasets():
     '''
     Function to read datasets
@@ -380,10 +427,13 @@ def printExamples(numberOfExamples, testSamples, testEqs, nn_model):
     nash_true = nash_true.astype('float32')
     
     #Predicting a Nash equilibrium for the example game
-    nash_predicted = nn_model.predict(exampleGame)
+    nash_predicted = nn_model.predict(exampleGame).astype('float32')
 
+    #Set the precision of float numbers
+    np.set_printoptions(precision = 7)
+    
     #Open file for writing the results into
-    printFile = open(EXAMPLES_PRINT_FILE, "w")
+    printFile = open('./Reports/' + EXAMPLES_PRINT_FILE, "w")
     
     for exampleCounter in range(numberOfExamples):
         #Computing the loss
