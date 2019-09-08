@@ -12,6 +12,8 @@ import nashpy as nash
 import random
 import matplotlib.pyplot as plt
 
+from NashPy_Scheduler import Metrics
+
 #********************************
 def main():
     '''
@@ -104,7 +106,8 @@ def main():
     print(nn_model.summary())
     
     # Create metrics callback instance
-    metrics = Metrics()
+    tmp_savedir = '/home/dusty/Desktop/GameTheoryStuff/NashNet'
+    metrics = Metrics(initial_lr=0.03, max_epochs=EPOCHS, num_cycles=10, save_dir=tmp_savedir, save_name="test")
 
     #Train the NN model
     trainingHistory = nn_model.fit(trainingSamples, trainingEqs, 
@@ -430,18 +433,18 @@ def printExamples(numberOfExamples, testSamples, testEqs, nn_model):
     return 
 
 
-# Ensemble inference
-#********************************
-def ensemble_infer(models, datasets):
-    # Create empty list of models
+# # Ensemble inference
+# #********************************
+# def ensemble_infer(models, datasets):
+#     # Create empty list of models
 
-    # Load all models
+#     # Load all models
 
-    # Read the datasets
+#     # Read the datasets
 
-    # For each model, do inference
+#     # For each model, do inference
 
-    # 
+#     # 
 
 
 

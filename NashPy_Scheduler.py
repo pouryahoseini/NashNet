@@ -1,6 +1,6 @@
 import numpy as np
 import math
-import keras
+# import keras
 import tensorflow as tf
 # # Learning rate scheduler - Sets learning rate for every epoch
 # # Following "Cyclic Cosine Annealing" described in "Train 1 Get M" paper
@@ -21,7 +21,7 @@ import tensorflow as tf
 
 
 # Metrics Callback - Saves model during training
-class Metrics(keras.callbacks.Callback):
+class Metrics(tf.keras.callbacks.Callback):
     def __init__(self, initial_lr, max_epochs, num_cycles, save_dir, save_name):
         # Learning Rate Scheduler Variables
         self.initial_lr = initial_lr
@@ -32,15 +32,15 @@ class Metrics(keras.callbacks.Callback):
         self.save_dir = save_dir
         self.save_name = save_name
 
-    def on_epoch_end(self, epoch, logs=None)
+    def on_epoch_end(self, epoch, logs=None):
         # Calculate new learning rate
-        new_lr = self.initial_lr/2 * (math.cos(math.pi*((epoch-1) % (self.max_epochs/self.num_cycles))/(self.max_epochs/self.num_cycles))+1)
+        new_lr = self.initial_lr/2 * (math.cos(math.pi*((epoch) % (self.max_epochs/self.num_cycles))/(self.max_epochs/self.num_cycles))+1)
 
         # Update learning rate
-        self.model.optimizer.lr.set_value(new_lr)
+        tf.keras.backend.set_value(self.model.optimizer.lr, new_lr)
 
         # If model is at minima, save the model
-        if (epoch-1) % (self.max_epochs/self.num_cycles) == 0:
+        if (epoch) % (self.max_epochs/self.num_cycles) == 0:
             # Get snapshot number
             snpashot_num = int(epoch/(self.max_epochs/self.num_cycles))
 
