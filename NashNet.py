@@ -4,6 +4,7 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 import tensorflow.keras.backend as K
+import configparser
 import ast
 import os
 import pandas as pd
@@ -11,50 +12,14 @@ import nashpy as nash
 import random
 import matplotlib.pyplot as plt
 
-
-#********************************
-'''Global variables'''
-#Game Settings
-PLAYER_NUMBER = 2
-PURE_STRATEGIES_PER_PLAYER = 3
-MAXIMUM_EQUILIBRIA_PER_GAME = 10
-
-#Loss Function
-WEIGHT_EQUILIBRIA_DISTANCE = 1
-WEIGHT_PAYOFF_DIFFERENCE = 0.5
-
-#Neural Network Training
-LEARNING_RATE = 0.01
-MOMENTUM = 0.9
-BATCH_SIZE = 1024
-EPOCHS = 500
-
-#Training Strategy
-NUMBER_OF_TRAINING_SAMPLES = 2700000
-NUMBER_OF_TESTS_SAMPLES = 300000
-VALIDATION_SPLIT = 0.1
-
-#Dataset and Output
-DATASET_GAMES_FILES = ['Dataset-DiscardedPure-1_Games_2P-3x3_1M.npy.npy', 'Dataset-DiscardedPure-2_Games_2P-3x3_1M.npy.npy', 'Dataset-1_Games_2P-3x3_1M.npy'] #['Dataset-2_Games_2P-3x3_1M.npy']
-DATASET_EQUILIBRIA_FILES = ['Dataset-DiscardedPure-1_Equilibria_2P-3x3_1M.npy', 'Dataset-DiscardedPure-2_Equilibria_2P-3x3_1M.npy', 'Dataset-1_Equilibria_2P-3x3_1M.npy'] #['Dataset-2_Equilibria_2P-3x3_1M.npy']
-NORMALIZE_INPUT_DATA = False
-NUMBER_OF_EXAMPLES = 2
-#File Names
-SAVED_MODEL_ARCHITECTURE_FILE = 'modelArchitecture'
-SAVED_MODEL_WEIGHTS_FILE = 'modelWeights'
-TRAINING_HISTORY_FILE = 'training_history.csv'
-TEST_RESULTS_FILE = 'test_results.csv'
-EXAMPLES_PRINT_FILE = 'printed_examples.txt'
-SAVED_TEST_GAMES_FILE = 'Test_Games.npy'
-SAVED_TEST_EQUILIBRIA_FILE = 'Test_Equilibria.npy'
-
-
 #********************************
 def main():
     '''
     Main function
     '''
-    
+    # Load the configuration file
+    load_cfg("./Configs/example.cfg")
+
     #Read the dataset
     #Indexing:
     #trainingSamples: [sample #] [player #] [row # of the game] [column # of the game]
@@ -138,8 +103,16 @@ def main():
     #Printing the summary of the constructed model
     print(nn_model.summary())
     
+    # Create metrics callback instance
+    metrics = Metrics()
+
     #Train the NN model
-    trainingHistory = nn_model.fit(trainingSamples, trainingEqs, validation_split = VALIDATION_SPLIT, epochs = EPOCHS, batch_size = BATCH_SIZE, shuffle = True)
+    trainingHistory = nn_model.fit(trainingSamples, trainingEqs, 
+                                   validation_split = VALIDATION_SPLIT, 
+                                   epochs = EPOCHS, 
+                                   batch_size = BATCH_SIZE, 
+                                   shuffle = True,
+                                   callbacks=[metrics])
     
     #Test the trained model
     evaluationResults = nn_model.evaluate(testSamples, testEqs, batch_size = 256)
@@ -455,6 +428,181 @@ def printExamples(numberOfExamples, testSamples, testEqs, nn_model):
     printFile.close()
     
     return 
+
+
+# Ensemble inference
+#********************************
+def ensemble_infer(models, datasets):
+    # Create empty list of models
+
+    # Load all models
+
+    # Read the datasets
+
+    # For each model, do inference
+
+    # 
+
+
+
+
+# Helper functions
+#********************************
+def str_to_list(in_str):
+    out_list = ast.literal_eval(in_str)
+    return out_list
+
+#********************************
+def str_to_dict(in_str):
+    out_dict = ast.literal_eval(in_str)
+    return out_dict
+
+
+#********************************
+def load_cfg(config_path):
+    print("IN LOAD CFG")
+    # D is for default
+    d = "DEFAULT"
+
+    # Create configparser object
+    config = configparser.ConfigParser()
+
+    # Success stores list of files successfully parsed. Throw error if empty
+    success = config.read(config_path)
+    d = 'DEFAULT' #Shortcut, for default config parser section
+
+    # Check and make sure that a configuration file was read
+    if len(success) <= 0:
+        raise Exception("Fatal Error: No configuration file \'"+config_path+"\' found.")
+
+    # Initialize all global variables as None
+    global PLAYER_NUMBER
+    global PURE_STRATEGIES_PER_PLAYER
+    global MAXIMUM_EQUILIBRIA_PER_GAME
+    
+    #Loss Function
+    global WEIGHT_EQUILIBRIA_DISTANCE
+    global WEIGHT_PAYOFF_DIFFERENCE
+
+    #Neural Network Training
+    global LEARNING_RATE
+    global MOMENTUM
+    global BATCH_SIZE
+    global EPOCHS
+
+    #Training Strategy
+    global NUMBER_OF_TRAINING_SAMPLES
+    global NUMBER_OF_TESTS_SAMPLES
+    global VALIDATION_SPLIT
+
+    #Dataset and Output
+    global DATASET_GAMES_FILES
+    global DATASET_EQUILIBRIA_FILES
+    global NORMALIZE_INPUT_DATA
+    global NUMBER_OF_EXAMPLES
+
+    #File Names
+    global SAVED_MODEL_ARCHITECTURE_FILE
+    global SAVED_MODEL_WEIGHTS_FILE
+    global TRAINING_HISTORY_FILE
+    global TEST_RESULTS_FILE
+    global EXAMPLES_PRINT_FILE
+    global SAVED_TEST_GAMES_FILE
+    global SAVED_TEST_EQUILIBRIA_FILE
+
+    # Number of examples to print when running print examples 
+    global NUMBER_OF_PRINT_EXAMPLES
+
+    # Test games to print
+    global TEST_GAMES_FILES
+    global TEST_EQUILIBRIA_FILES
+
+    # Set values from config
+    PLAYER_NUMBER = config.getint(d,"PLAYER_NUMBER")
+    PURE_STRATEGIES_PER_PLAYER = config.getint(d,"PURE_STRATEGIES_PER_PLAYER")
+    MAXIMUM_EQUILIBRIA_PER_GAME = config.getint(d,"MAXIMUM_EQUILIBRIA_PER_GAME")
+
+    #Loss Function
+    WEIGHT_EQUILIBRIA_DISTANCE = config.getfloat(d,"WEIGHT_EQUILIBRIA_DISTANCE")
+    WEIGHT_PAYOFF_DIFFERENCE = config.getfloat(d,"WEIGHT_PAYOFF_DIFFERENCE")
+
+    #Neural Network Training
+    LEARNING_RATE = config.getfloat(d, "LEARNING_RATE")
+    MOMENTUM = config.getfloat(d, "MOMENTUM")
+    BATCH_SIZE = config.getint(d, "BATCH_SIZE")
+    EPOCHS = config.getint(d, "EPOCHS")
+
+    #Training Strategy
+    NUMBER_OF_TRAINING_SAMPLES = config.getint(d, "NUMBER_OF_TRAINING_SAMPLES")
+    NUMBER_OF_TESTS_SAMPLES = config.getint(d, "NUMBER_OF_TESTS_SAMPLES")
+    VALIDATION_SPLIT = config.getfloat(d, "VALIDATION_SPLIT")
+
+    #Dataset and Output
+    DATASET_GAMES_FILES = str_to_list(config.get(d, "DATASET_GAMES_FILES"))
+    DATASET_EQUILIBRIA_FILES = str_to_list(config.get(d, "DATASET_EQUILIBRIA_FILES"))
+    NORMALIZE_INPUT_DATA = config.getboolean(d, "NORMALIZE_INPUT_DATA")
+    NUMBER_OF_EXAMPLES = config.getint(d, "NUMBER_OF_EXAMPLES")
+
+    #File Names
+    SAVED_MODEL_ARCHITECTURE_FILE = config.get(d, "SAVED_MODEL_ARCHITECTURE_FILE")
+    SAVED_MODEL_WEIGHTS_FILE = config.get(d, "SAVED_MODEL_WEIGHTS_FILE")
+    TRAINING_HISTORY_FILE = config.get(d, "TRAINING_HISTORY_FILE")
+    TEST_RESULTS_FILE = config.get(d, "TEST_RESULTS_FILE")
+    EXAMPLES_PRINT_FILE = config.get(d, "EXAMPLES_PRINT_FILE")
+    SAVED_TEST_GAMES_FILE = config.get(d, "SAVED_TEST_GAMES_FILE")
+    SAVED_TEST_EQUILIBRIA_FILE = config.get(d, "SAVED_TEST_EQUILIBRIA_FILE")
+
+    # Number of examples to print when running
+    NUMBER_OF_PRINT_EXAMPLES = config.getint(d, "NUMBER_OF_PRINT_EXAMPLES")
+
+    # Redefining the dataset file names
+    TEST_GAMES_FILES = str_to_list(config.get(d, "TEST_GAMES_FILES"))
+    TEST_EQUILIBRIA_FILES = str_to_list(config.get(d, "TEST_EQUILIBRIA_FILES"))
+
+
+
+
+# Initialize all global variables as None
+PLAYER_NUMBER = None
+PURE_STRATEGIES_PER_PLAYER = None
+MAXIMUM_EQUILIBRIA_PER_GAME = None
+
+#Loss Function
+WEIGHT_EQUILIBRIA_DISTANCE = None
+WEIGHT_PAYOFF_DIFFERENCE = None
+
+#Neural Network Training
+LEARNING_RATE = None
+MOMENTUM = None
+BATCH_SIZE = None
+EPOCHS = None
+
+#Training Strategy
+NUMBER_OF_TRAINING_SAMPLES = None
+NUMBER_OF_TESTS_SAMPLES = None
+VALIDATION_SPLIT = None
+
+#Dataset and Output
+DATASET_GAMES_FILES = None
+DATASET_EQUILIBRIA_FILES = None
+NORMALIZE_INPUT_DATA = None
+NUMBER_OF_EXAMPLES = None
+
+#File Names
+SAVED_MODEL_ARCHITECTURE_FILE = None
+SAVED_MODEL_WEIGHTS_FILE = None
+TRAINING_HISTORY_FILE = None
+TEST_RESULTS_FILE = None
+EXAMPLES_PRINT_FILE = None
+SAVED_TEST_GAMES_FILE = None
+SAVED_TEST_EQUILIBRIA_FILE = None
+
+#Number of examples to print when running print examples
+NUMBER_OF_PRINT_EXAMPLES = None
+
+#Redefining the dataset file names
+TEST_GAMES_FILES = None
+TEST_EQUILIBRIA_FILES = None
 
 #********************************
 '''Load the main function when this module is directly executed'''

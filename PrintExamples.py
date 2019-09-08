@@ -10,15 +10,6 @@ from NashNet import *
 #********************************
 '''Global variables'''
 
-#Redifining the number of examples
-NUMBER_OF_EXAMPLES = 20
-
-#Redefining the dataset file names
-TEST_GAMES_FILES = ['Test_Games.npy']
-TEST_EQUILIBRIA_FILES = ['Test_Equilibria.npy']
-
-#Deciding to normalize the test data before computing the loss
-NORMALIZE_INPUT_DATA = False
 
 
 #********************************
@@ -63,4 +54,4 @@ nn_model = keras.models.model_from_json(json_config)
 nn_model.load_weights('./Model/' + SAVED_MODEL_WEIGHTS_FILE + '.h5')
 
 #Print some examples of predictions
-printExamples(NUMBER_OF_EXAMPLES, testSamples, testEqs, nn_model)
+printExamples(NUMBER_OF_PRINT_EXAMPLES, testSamples, testEqs, nn_model)
