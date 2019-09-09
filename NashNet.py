@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 from NashPy_Scheduler import Metrics
 
 #********************************
-def main():
+def train_network():
     '''
     Main function
     '''
@@ -107,7 +107,10 @@ def main():
     
     # Create metrics callback instance
     tmp_savedir = '/home/dusty/Desktop/GameTheoryStuff/NashNet'
-    metrics = Metrics(initial_lr=0.03, max_epochs=EPOCHS, num_cycles=10, save_dir=tmp_savedir, save_name="test")
+    metrics = Metrics(initial_lr=0.03, max_epochs=EPOCHS, num_cycles=144, save_dir=tmp_savedir, save_name="test")
+
+    #Save the model
+    saveModel(nn_model)
 
     #Train the NN model
     trainingHistory = nn_model.fit(trainingSamples, trainingEqs, 
@@ -116,12 +119,9 @@ def main():
                                    batch_size = BATCH_SIZE, 
                                    shuffle = True,
                                    callbacks=[metrics])
-    
+        
     #Test the trained model
     evaluationResults = nn_model.evaluate(testSamples, testEqs, batch_size = 256)
-    
-    #Save the model
-    saveModel(nn_model)
     
     #Write the loss and metric values during the training and test time
     saveHistory(trainingHistory, evaluationResults, nn_model)
@@ -610,5 +610,56 @@ TEST_EQUILIBRIA_FILES = None
 #********************************
 '''Load the main function when this module is directly executed'''
 if __name__ == '__main__':
-    main()
+    train = False
+    if train:
+        train_network()
+    else:
+        load_cfg("./Configs/example.cfg")
+
+
+        #********************************
+        def readTestData():
+            '''
+            Function to read the test data set aside during the last training session
+            '''
+            
+            #Create arrays with predefined sizes
+            sampleGames = np.zeros((0, PLAYER_NUMBER, PURE_STRATEGIES_PER_PLAYER, PURE_STRATEGIES_PER_PLAYER))
+            sampleEquilibria = np.zeros((0, MAXIMUM_EQUILIBRIA_PER_GAME, PLAYER_NUMBER, PURE_STRATEGIES_PER_PLAYER))
+            
+            #Set where to look for the dataset files
+            directory = './Reports/Saved_Test_Data/'
+            if not os.path.isdir(directory):
+                print('\n\nError: The directory for the test data does not exist.\n\n')
+                exit()
+            
+            #Read the dataset files in npy format
+            for gamesDataset, equilibriaDataset in zip(TEST_GAMES_FILES, TEST_EQUILIBRIA_FILES):
+                sampleGames_temp, sampleEquilibria_temp = GetTrainingDataFromNPY(directory + gamesDataset, directory + equilibriaDataset)
+                sampleGames = np.append(sampleGames, sampleGames_temp, axis = 0)
+                sampleEquilibria = np.append(sampleEquilibria, sampleEquilibria_temp, axis = 0)
+            
+            return sampleGames, sampleEquilibria
+
+        #********************************
+        #Read datasets
+        testSamples, testEqs = readTestData()
+
+        #Shuffle the dataset arrays
+        testSamples, testEqs = unisonShuffle(testSamples, testEqs)
+
+        #Normalize the games
+        if NORMALIZE_INPUT_DATA:
+            testSamples = (testSamples - np.reshape(np.min(testSamples, axis = (1, 2, 3)), (testSamples.shape[0], 1, 1, 1))) / np.reshape(np.max(testSamples, axis = (1, 2, 3)) - np.min(testSamples, axis = (1, 2, 3)), (testSamples.shape[0], 1, 1, 1))
+
+        #Loading the neural network model
+        with open('./Model/' + SAVED_MODEL_ARCHITECTURE_FILE + '.json') as json_file:
+            json_config = json_file.read()
+        nn_model = keras.models.model_from_json(json_config)
+        nn_model.load_weights('./Model/' + SAVED_MODEL_WEIGHTS_FILE + '.h5')
+
+        #Print some examples of predictions
+        printExamples(NUMBER_OF_PRINT_EXAMPLES, testSamples, testEqs, nn_model)
+
+
 
