@@ -179,6 +179,21 @@ def create_sse_loss(args=dict()):
         return loss_SSE
     return enclosed_loss
 
+# Loss function for multiheaded shit
+def create_hydra_sse_loss(args=dict()):
+    def enclosed_loss(nash_true, nash_pred):
+        # Compute the minimum of sum of squared error (SSE) of nash eq
+        SSE = K.sum(K.square(nash_true - nash_pred), axis=[2, 3])
+        # Find minimum error
+        min_index = K.argmin(SSE, axis=1)
+        # loss_SSE = tf.gather_nd(SSE,
+        #                         tf.stack((tf.range(0, tf.shape(min_index)[0]), tf.cast(min_index, dtype='int32')),
+        #                                  axis=1))
+        loss_SSE = tf.gather_nd(SSE,
+                                tf.stack((tf.range(0, tf.shape(min_index)[0]), tf.fill(tf.shape(min_index), 2)),
+                                         axis=1))
+        return loss_SSE
+    return enclosed_loss
 
 def build_model(num_players: object, pure_strategies_per_player: object, max_equilibria: object, optimizer: object, metrics: object, create_loss: object) -> object:
     # Get input shape
@@ -241,20 +256,77 @@ def build_hydra_model(num_players: object, pure_strategies_per_player: object, m
         prev_layer = tf.keras.layers.Dense(size, activation='relu')(prev_layer)
     final_dense = prev_layer
 
-    # Create output for each player
-    last_layer_player = [tf.keras.layers.Dense(pure_strategies_per_player)(final_dense)]
+    # Create output for each player and each head
+    # THIS IS UGLY AND I HATE IT
+    last_layer_player0 = [tf.keras.layers.Dense(pure_strategies_per_player)(final_dense)]
     for _ in range(1, num_players):
-        last_layer_player.append(tf.keras.layers.Dense(pure_strategies_per_player)(final_dense))
+        last_layer_player0.append(tf.keras.layers.Dense(pure_strategies_per_player)(final_dense))
+    last_layer_player1 = [tf.keras.layers.Dense(pure_strategies_per_player)(final_dense)]
+    for _ in range(1, num_players):
+        last_layer_player1.append(tf.keras.layers.Dense(pure_strategies_per_player)(final_dense))
+    last_layer_player2 = [tf.keras.layers.Dense(pure_strategies_per_player)(final_dense)]
+    for _ in range(1, num_players):
+        last_layer_player2.append(tf.keras.layers.Dense(pure_strategies_per_player)(final_dense))
+    last_layer_player3 = [tf.keras.layers.Dense(pure_strategies_per_player)(final_dense)]
+    for _ in range(1, num_players):
+        last_layer_player3.append(tf.keras.layers.Dense(pure_strategies_per_player)(final_dense))
+    last_layer_player4 = [tf.keras.layers.Dense(pure_strategies_per_player)(final_dense)]
+    for _ in range(1, num_players):
+        last_layer_player4.append(tf.keras.layers.Dense(pure_strategies_per_player)(final_dense))
+    last_layer_player5 = [tf.keras.layers.Dense(pure_strategies_per_player)(final_dense)]
+    for _ in range(1, num_players):
+        last_layer_player5.append(tf.keras.layers.Dense(pure_strategies_per_player)(final_dense))
+    last_layer_player6 = [tf.keras.layers.Dense(pure_strategies_per_player)(final_dense)]
+    for _ in range(1, num_players):
+        last_layer_player6.append(tf.keras.layers.Dense(pure_strategies_per_player)(final_dense))
+    last_layer_player7 = [tf.keras.layers.Dense(pure_strategies_per_player)(final_dense)]
+    for _ in range(1, num_players):
+        last_layer_player7.append(tf.keras.layers.Dense(pure_strategies_per_player)(final_dense))
+    last_layer_player8 = [tf.keras.layers.Dense(pure_strategies_per_player)(final_dense)]
+    for _ in range(1, num_players):
+        last_layer_player8.append(tf.keras.layers.Dense(pure_strategies_per_player)(final_dense))
+    last_layer_player9 = [tf.keras.layers.Dense(pure_strategies_per_player)(final_dense)]
+    for _ in range(1, num_players):
+        last_layer_player9.append(tf.keras.layers.Dense(pure_strategies_per_player)(final_dense))
 
     # Create softmax layers (Since games have been normalized so all values are between 0 and 1?)
-    softmax = [tf.keras.layers.Activation('softmax')(last_layer_player[0])]
+    softmax0 = [tf.keras.layers.Activation('softmax')(last_layer_player0[0])]
     for playerCounter in range(1, num_players):
-        softmax.append(tf.keras.layers.Activation('softmax')(last_layer_player[playerCounter]))
+        softmax0.append(tf.keras.layers.Activation('softmax')(last_layer_player0[playerCounter]))
+    softmax1 = [tf.keras.layers.Activation('softmax')(last_layer_player1[0])]
+    for playerCounter in range(1, num_players):
+        softmax1.append(tf.keras.layers.Activation('softmax')(last_layer_player1[playerCounter]))
+    softmax2 = [tf.keras.layers.Activation('softmax')(last_layer_player2[0])]
+    for playerCounter in range(1, num_players):
+        softmax2.append(tf.keras.layers.Activation('softmax')(last_layer_player2[playerCounter]))
+    softmax3 = [tf.keras.layers.Activation('softmax')(last_layer_player3[0])]
+    for playerCounter in range(1, num_players):
+        softmax3.append(tf.keras.layers.Activation('softmax')(last_layer_player3[playerCounter]))
+    softmax4 = [tf.keras.layers.Activation('softmax')(last_layer_player4[0])]
+    for playerCounter in range(1, num_players):
+        softmax4.append(tf.keras.layers.Activation('softmax')(last_layer_player4[playerCounter]))
+    softmax5 = [tf.keras.layers.Activation('softmax')(last_layer_player5[0])]
+    for playerCounter in range(1, num_players):
+        softmax5.append(tf.keras.layers.Activation('softmax')(last_layer_player5[playerCounter]))
+    softmax6 = [tf.keras.layers.Activation('softmax')(last_layer_player6[0])]
+    for playerCounter in range(1, num_players):
+        softmax6.append(tf.keras.layers.Activation('softmax')(last_layer_player6[playerCounter]))
+    softmax7 = [tf.keras.layers.Activation('softmax')(last_layer_player7[0])]
+    for playerCounter in range(1, num_players):
+        softmax7.append(tf.keras.layers.Activation('softmax')(last_layer_player7[playerCounter]))
+    softmax8 = [tf.keras.layers.Activation('softmax')(last_layer_player8[0])]
+    for playerCounter in range(1, num_players):
+        softmax8.append(tf.keras.layers.Activation('softmax')(last_layer_player8[playerCounter]))
+    softmax9 = [tf.keras.layers.Activation('softmax')(last_layer_player9[0])]
+    for playerCounter in range(1, num_players):
+        softmax9.append(tf.keras.layers.Activation('softmax')(last_layer_player9[playerCounter]))
 
     # Create the output layer
-    concatenated_output = tf.keras.layers.concatenate([softmax[pl] for pl in range(num_players)])
-    replicated_output = tf.keras.layers.concatenate([concatenated_output for i in range(max_equilibria)])
-    output_layer = tf.keras.layers.Reshape((max_equilibria, num_players, pure_strategies_per_player))(replicated_output)
+    output_layer = tf.keras.layers.concatenate(softmax0, softmax1, softmax2, softmax3, softmax4,
+                                               softmax5, softmax6, softmax7, softmax8, softmax9)
+    # concatenated_output = tf.keras.layers.concatenate([softmax[pl] for pl in range(num_players)])
+    # replicated_output = tf.keras.layers.concatenate([concatenated_output for i in range(max_equilibria)])
+    # output_layer = tf.keras.layers.Reshape((max_equilibria, num_players, pure_strategies_per_player))(replicated_output)
 
     # Create a keras sequential model from this architecture
     model = tf.keras.Model(inputs=input_layer, outputs=output_layer)
@@ -266,10 +338,12 @@ def build_hydra_model(num_players: object, pure_strategies_per_player: object, m
             metrics[i] = make_MSE()
 
     # Compile the model
-    model.compile(loss=create_loss(), optimizer=optimizer, metrics=metrics)
+    model.compile(loss=create_hydra_sse_loss(), optimizer=optimizer, metrics=metrics)
 
     # Return the created model
     return model
+
+
 
 def generate_nash(game):
     '''
