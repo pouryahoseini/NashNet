@@ -16,16 +16,17 @@ warnings.filterwarnings("error")
 #Output
 GENERATED_GAMES_DATASET_NAME = 'Games'
 GENERATED_EQUILIBRIA_DATASET_NAME = 'Equilibria'
-NUMBER_OF_SAMPLES = 1000000
+NUMBER_OF_SAMPLES = 100000
 
 #Game Settings
 MAXIMUM_EQUILIBRIA_PER_GAME = 10
 PLAYER_NUMBER = 2
 PURE_STRATEGIES_PER_PLAYER = 3
 
-#Pure steragy filtering
+#Equilibrium filtering
 DISCARD_NON_MIXED_STRATEGY_GAMES = True
 FILTER_PURE_STRATEGIES = False
+DISCARD_SINGLE_EQUILIBRIUM_GAMES = True
 
 #Multithreading
 CPU_CORES = 8
@@ -126,6 +127,18 @@ def filterPureStrategies(equilibria):
 	return filteredEquilibria, skip
 
 #************************
+def discardSingleEquilibriumGames(equilibria):
+	'''
+	Function to discard games that have only one Nash equilibrium.
+	'''
+	
+	#Check the number of equilibria
+	if len(equilibria) == 1:
+		return True
+	else:
+		return False
+
+#************************
 def generate_dataset(output_games, output_equilibria, process_index, num_generated, num_games = NUMBER_OF_SAMPLES, max_nashes = MAXIMUM_EQUILIBRIA_PER_GAME, players = PLAYER_NUMBER, strategies = PURE_STRATEGIES_PER_PLAYER):
 	'''
 	Function to generate games and compute their Nash equilibria
@@ -149,14 +162,18 @@ def generate_dataset(output_games, output_equilibria, process_index, num_generat
 			eq, _, _ = compute_nash(g)
 			
 			#If enabled, discard games containing pure strategy equilibria
-			skip = False
+			skip = skip2 = False
 			
 			if DISCARD_NON_MIXED_STRATEGY_GAMES:
 				skip = discardNonMixedStrategyGames(eq)
 			elif FILTER_PURE_STRATEGIES: #If enabled, filter out pure strategy equilibria
 				eq, skip = filterPureStrategies(eq)
 			
-			if skip:
+			#If enabled, discard games with just one Nash equilibrium
+			if DISCARD_SINGLE_EQUILIBRIUM_GAMES:
+				skip2 = discardSingleEquilibriumGames(eq)
+			
+			if skip or skip2:
 				continue
 			
 			#If it got here, game is not degenerate
