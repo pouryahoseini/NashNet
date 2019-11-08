@@ -67,7 +67,7 @@ class NashNet():
         '''
         
         # Load the training data
-        sample_games, sample_equilibria = self.load_datasets(self.cfg['dataset_files'])
+        sample_games, sample_equilibria = self.load_datasets()
 
         #Extract the training and test data
         sample_no = sample_games.shape[0]
@@ -162,7 +162,7 @@ class NashNet():
                       )
 
     # ******
-    def load_datasets(self, dataset_files):
+    def load_datasets(self):
         '''
         Function to read the game and equilibria data from dataset files.
         The input argument dataset_files should be an array (list, tuple, etc.) of arrays.
@@ -176,24 +176,45 @@ class NashNet():
         if not os.path.isdir(dataset_directory):
             print('\n\nError: The dataset directory does not exist.\n\n')
             exit()
- 
-        # Read the dataset files
-        firstDataset = dataset_files[0]
-        sampleGames, sampleEquilibria = GetTrainingDataFromNPY(dataset_directory + firstDataset[0], dataset_directory + firstDataset[1])
 
-        for currentDataset in dataset_files[1 : ]:
-            current_sampleGames, current_sampleEquilibria = GetTrainingDataFromNPY(dataset_directory + currentDataset[0], dataset_directory + currentDataset[1])
-            sampleGames = np.append(sampleGames, current_sampleGames, axis = 0)
-            sampleEquilibria = np.append(sampleEquilibria, current_sampleEquilibria, axis = 0)
+        #List the file name lists of all different types of datasets
+        datasetTypes = [self.cfg['general_dataset_files'], self.cfg['mixed_only_dataset_files'], self.cfg['group_only_dataset_files'], self.cfg['mixed_group_only_dataset_files']]
+        dataset_typeNames = ['general_dataset_files', 'mixed_only_dataset_files', 'group_only_dataset_files', 'mixed_group_only_dataset_files']
+        
+        # Read the dataset files
+        firstTime = True
+        for typeNumber, dataset_files in enumerate(datasetTypes):            
+            if len(dataset_files) > 0:
+                firstDataset = dataset_files[0]
+                sampleGames_currentType, sampleEquilibria_currentType = GetTrainingDataFromNPY(dataset_directory + firstDataset[0] + '.npy', dataset_directory + firstDataset[1] + '.npy')
+        
+                for currentDataset in dataset_files[1 : ]:
+                    current_sampleGames, current_sampleEquilibria = GetTrainingDataFromNPY(dataset_directory + currentDataset[0] + '.npy', dataset_directory + currentDataset[1] + '.npy')
+                    sampleGames_currentType = np.append(sampleGames_currentType, current_sampleGames, axis = 0)
+                    sampleEquilibria_currentType = np.append(sampleEquilibria_currentType, current_sampleEquilibria, axis = 0)
+                
+                if firstTime:
+                    sampleGames = np.empty(shape=(0, self.cfg["num_players"], self.cfg["num_strategies"], self.cfg["num_strategies"]))
+                    sampleEquilibria = np.empty(shape=(0, sampleEquilibria_currentType.shape[1], self.cfg["num_players"], self.cfg["num_strategies"]))
+                    firstTime = False
+
+                #Extract the requested number of samples and combine the arrays of different types
+                if self.cfg['dataset_types_quota'][typeNumber] > sampleGames_currentType.shape[0]:
+                    raise Exception('\nThe requested quota for ' + dataset_typeNames[typeNumber] + ' is more than the samples in the dataset files provided.\n')
+                else:
+                    sampleGames = np.append(sampleGames, sampleGames_currentType[: self.cfg['dataset_types_quota'][typeNumber], :, :, :], axis=0)
+                    sampleEquilibria = np.append(sampleEquilibria, sampleEquilibria_currentType[: self.cfg['dataset_types_quota'][typeNumber], :, :, :], axis=0)
+            elif self.cfg['dataset_types_quota'][typeNumber] > 0:
+                raise Exception('\nThe requested quota for ' + dataset_typeNames[typeNumber] + ' is more than zero, but no dataset files provided.\n')
+
+        # Shuffle the dataset arrays
+        sampleGames, sampleEquilibria = unisonShuffle(sampleGames, sampleEquilibria)
 
         #Limit the number of true equilibria for each sample game if they are more than max_equilibria
         if self.cfg["max_equilibria"] < sampleEquilibria.shape[1]:
             sampleEquilibria = sampleEquilibria[:, 0 : self.cfg["max_equilibria"], :, :]
         elif self.cfg["max_equilibria"] > sampleEquilibria.shape[1]:
             raise Exception('\nmax_equilibria is larger than the number of per sample true equilibria in the provided dataset.\n')
-
-        # Shuffle the dataset arrays
-        sampleGames, sampleEquilibria = unisonShuffle(sampleGames, sampleEquilibria)
 
         # Normalize if set to do so
         if self.cfg["normalize_input_data"]:
@@ -235,7 +256,11 @@ class NashNet():
         self.cfg["nesterov"] = config_parser.getboolean(configSection, "nesterov")
         self.cfg["batch_size"] = config_parser.getint(configSection, "batch_size")
         self.cfg["normalize_input_data"] = config_parser.getboolean(configSection, "normalize_input_data")
-        self.cfg['dataset_files'] = ast.literal_eval(config_parser.get(configSection, "dataset_files"))
+        self.cfg['dataset_types_quota'] = ast.literal_eval(config_parser.get(configSection, "dataset_types_quota"))
+        self.cfg['general_dataset_files'] = ast.literal_eval(config_parser.get(configSection, "general_dataset_files"))
+        self.cfg['mixed_only_dataset_files'] = ast.literal_eval(config_parser.get(configSection, "mixed_only_dataset_files"))
+        self.cfg['group_only_dataset_files'] = ast.literal_eval(config_parser.get(configSection, "group_only_dataset_files"))
+        self.cfg['mixed_group_only_dataset_files'] = ast.literal_eval(config_parser.get(configSection, "mixed_group_only_dataset_files"))
         self.cfg["model_architecture_file"] = config_parser.get(configSection, "model_architecture_file")
         self.cfg["model_weights_file"] = config_parser.get(configSection, "model_weights_file")
         self.cfg["loss_type"] = config_parser.get(configSection, "loss_type")
