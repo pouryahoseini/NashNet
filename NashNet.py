@@ -55,10 +55,13 @@ class NashNet():
                                 )
 
         # Load initial model weights if any one is provided in the config file or in the constructor arguments
+        self.weights_initialized = False
         if initial_modelWeights:
             self.model.load_weights(initial_modelWeights)
+            self.weights_initialized = True
         elif self.cfg["initial_model_weights"]:
             self.model.load_weights(self.cfg["initial_model_weights"])
+            self.weights_initialized = True
 
     # ******
     def train(self):
@@ -67,19 +70,11 @@ class NashNet():
         '''
         
         # Load the training data
-        sample_games, sample_equilibria = self.load_datasets()
-
-        #Extract the training and test data
-        sample_no = sample_games.shape[0]
-        trainingSamples_no = int((1 - self.cfg["test_split"]) * sample_no)
-        
-        training_games = sample_games[ : trainingSamples_no]
-        training_equilibria = sample_equilibria[ : trainingSamples_no]
-        self.test_games = sample_games[trainingSamples_no : sample_no]
-        self.test_equilibria = sample_equilibria[trainingSamples_no : sample_no]
+        training_games, training_equilibria, self.test_games, self.test_equilibria = self.load_datasets()
 
         #Write the test data
-        saveTestData(self.test_games, self.test_equilibria, self.cfg["test_games_file"], self.cfg["test_equilibria_file"])
+        if self.cfg["rewrite_saved_test_data_if_model_weights_given"] or (not self.weights_initialized):
+            saveTestData(self.test_games, self.test_equilibria, self.cfg["num_players"], self.cfg["num_strategies"])
 
         #Print the summary of the model
         print(self.model.summary())
@@ -122,7 +117,7 @@ class NashNet():
 
         #Load test data if not already created
         if not (self.test_games.size and self.test_equilibria.size):
-            self.test_games, self.test_equilibria = loadTestData(self.cfg["test_games_file"], self.cfg["test_equilibria_file"], self.cfg["max_equilibria"])
+            self.test_games, self.test_equilibria = loadTestData(self.cfg["test_games_file"], self.cfg["test_equilibria_file"], self.cfg["max_equilibria"], self.cfg["num_players"], self.cfg["num_strategies"])
 
         #Test the trained model
         evaluationResults = self.model.evaluate(self.test_games, self.test_equilibria, batch_size=1024)
@@ -145,7 +140,7 @@ class NashNet():
 
         #Load test data if not already created
         if not (self.test_games.size and self.test_equilibria.size):
-            self.test_games, self.test_equilibria = loadTestData(self.cfg["test_games_file"], self.cfg["test_equilibria_file"], self.cfg["max_equilibria"])
+            self.test_games, self.test_equilibria = loadTestData(self.cfg["test_games_file"], self.cfg["test_equilibria_file"], self.cfg["max_equilibria"], self.cfg["num_players"], self.cfg["num_strategies"])
 
         #Print examples
         printExamples(numberOfExamples = num_to_print,
@@ -158,6 +153,7 @@ class NashNet():
                       payoffLoss_type = self.cfg["payoff_loss_type"],
                       num_players = self.cfg["num_players"],
                       enable_hydra = self.cfg["enable_hydra"],
+                      cluster_examples = self.cfg["cluster_examples"],
                       payoffToEq_weight = self.cfg["payoff_to_equilibrium_weight"]
                       )
 
@@ -220,7 +216,16 @@ class NashNet():
         if self.cfg["normalize_input_data"]:
             sampleGames = (sampleGames - np.reshape(np.min(sampleGames, axis = (1, 2, 3)), (sampleGames.shape[0], 1, 1, 1))) / np.reshape(np.max(sampleGames, axis = (1, 2, 3)) - np.min(sampleGames, axis = (1, 2, 3)), (sampleGames.shape[0], 1, 1, 1))
         
-        return sampleGames, sampleEquilibria
+        #Extract the training and test data
+        sample_no = sampleGames.shape[0]
+        trainingSamples_no = int((1 - self.cfg["test_split"]) * sample_no)
+        
+        training_games = sampleGames[ : trainingSamples_no]
+        training_equilibria = sampleEquilibria[ : trainingSamples_no]
+        test_games = sampleGames[trainingSamples_no : sample_no]
+        test_equilibria = sampleEquilibria[trainingSamples_no : sample_no]
+
+        return training_games, training_equilibria, test_games, test_equilibria
 
     # ******
     def load_config(self, configFile, configSection = "DEFAULT"):
@@ -275,6 +280,8 @@ class NashNet():
         self.cfg["payoff_loss_type"] = config_parser.get(configSection, "payoff_loss_type")
         self.cfg["hydra_physique"] = config_parser.get(configSection, "hydra_physique")
         self.cfg["model_best_weights_file"] = config_parser.get(configSection, "model_best_weights_file")
+        self.cfg["cluster_examples"] = config_parser.getboolean(configSection, "cluster_examples")
+        self.cfg["rewrite_saved_test_data_if_model_weights_given"] = config_parser.get(configSection, "rewrite_saved_test_data_if_model_weights_given")
         
         # Check input configurations
         if not (0 < self.cfg["validation_split"] < 1):

@@ -4,6 +4,7 @@ import tensorflow.keras.backend as K
 import nashpy as nash
 import math, random
 import pandas as pd
+from sklearn import cluster
 
 # ********************************
 def GetTrainingDataFromNPY(data_file, labels_file):
@@ -266,7 +267,7 @@ def lossFunction_payoff_MSE(game, payoff_Eq_function, payoffToEq_weight, pureStr
     Function to compute the loss by taking the mean square error of payoffs resulted from the equilibria.
     '''
 
-    def payoff_MSE(nashEq_true, nashEq_pred):        
+    def payoff_MSE(nashEq_true, nashEq_pred):
         #Call th helper function to compute the MSE of payoffs
         _ , loss = payoff_Eq_function(game, pureStrategies_perPlayer, nashEq_true, nashEq_pred, computePayoff_function, num_players)
 
@@ -478,7 +479,7 @@ def build_hydra_model(num_players, pure_strategies_per_player, max_equilibria, o
     if hydra_shape == 'bull_necked':
         common_layer_sizes = [100, 200, 500, 500, 500, 500, 500, 500, 500, 500, 500, 200, 200, 200, 100, 100, 100, 100, 100]
         head_layer_sizes = []
-    elif hydra_shape == 'sequential_stem':
+    elif hydra_shape == 'sawfish':
         common_layer_sizes = [100, 200, 500, 500, 500, 500, 500, 500, 500, 500, 500, 200, 200, 200]
         head_layer_sizes = [100]
     else:
@@ -630,21 +631,24 @@ def saveHistory(trainingHistory, model, trainingHistory_file):
 #     pd.DataFrame([model.metrics_names, evaluationResults]).to_csv('./Reports/' + testResults_file, index = False)
     
 #********************************
-def saveTestData(testSamples, testEqs, test_games_file, test_equilibria_file):
+def saveTestData(testSamples, testEqs, num_players, num_strategies):
     '''
     Function to save test data to reuse for evaluation purposes
     '''
     
-    np.save('./Datasets/Saved_Test_Data/' + test_games_file, testSamples)
-    np.save('./Datasets/Saved_Test_Data/' + test_equilibria_file, testEqs)
+    address = './Datasets/Test_Data/' + str(num_players) + 'P/' + str(num_strategies) + 'x' + str(num_strategies) + '/'
+    
+    np.save(address + 'Saved_Test_Games.npy', testSamples)
+    np.save(address + 'Saved_Test_Equilibria.npy', testEqs)
 
 #********************************
-def loadTestData(test_games_file, test_equilibria_file, max_equilibria):
+def loadTestData(test_games_file, test_equilibria_file, max_equilibria, num_players, num_strategies):
     '''
     Function to save test data to reuse for evaluation purposes
     '''
     
-    testSamples, testEqs = GetTrainingDataFromNPY('./Datasets/Saved_Test_Data/' + test_games_file, './Datasets/Saved_Test_Data/' + test_equilibria_file)
+    address = './Datasets/Test_Data/' + str(num_players) + 'P/' + str(num_strategies) + 'x' + str(num_strategies) + '/'
+    testSamples, testEqs = GetTrainingDataFromNPY(address + test_games_file, address + test_equilibria_file)
 
     #Limit the number of true equilibria for each sample game if they are more than max_equilibria
     if max_equilibria < testEqs.shape[1]:
@@ -668,7 +672,7 @@ def saveModel(model, model_architecture_file, model_weights_file):
     model.save_weights('./Model/' + model_weights_file + '.h5')
 
 #********************************
-def printExamples(numberOfExamples, testSamples, testEqs, nn_model, examples_print_file, pureStrategies_per_player, lossType, payoffLoss_type, num_players, enable_hydra, payoffToEq_weight = None):
+def printExamples(numberOfExamples, testSamples, testEqs, nn_model, examples_print_file, pureStrategies_per_player, lossType, payoffLoss_type, num_players, enable_hydra, cluster_examples, payoffToEq_weight = None):
     '''
     Function to make some illustrative predictions and print them
     '''
@@ -688,7 +692,7 @@ def printExamples(numberOfExamples, testSamples, testEqs, nn_model, examples_pri
     nash_predicted = nn_model.predict(exampleGame).astype('float32')
 
     #Set the precision of float numbers
-    np.set_printoptions(precision = 7)
+    np.set_printoptions(precision = 4)
     
     #Determine which loss function to use
     lossFunction, payoffLoss_function, computePayoff_function = chooseLossFunction(lossType, payoffLoss_type, num_players, enable_hydra)
@@ -704,10 +708,16 @@ def printExamples(numberOfExamples, testSamples, testEqs, nn_model, examples_pri
         #Compute the Nash equilibrium for the current game to get only distinctive equilibria
         distinctive_NashEquilibria, _, _ = generate_nash(exampleGame[exampleCounter])
 
+        #If enabled, cluster the predicted Nash equilibria
+        if cluster_examples:
+            predictedEq = clustering(np.reshape(nash_predicted[exampleCounter], (nash_predicted.shape[1], num_players * pureStrategies_per_player)), num_players, pureStrategies_per_player)
+        else:
+            predictedEq = nash_predicted[exampleCounter]
+
         #Printing the results for the example game
         listOfTrueEquilibria = [distinctive_NashEquilibria[i] for i in range(len(distinctive_NashEquilibria))]
         printString = ("\n______________\nExample {}:\nTrue: \n" + ("{}\n" * len(distinctive_NashEquilibria)) + "\nPredicted: \n{}\n\nLoss: {}\n\n") \
-              .format(* ([exampleCounter + 1] + listOfTrueEquilibria + list([nash_predicted[exampleCounter]]) + [K.get_value(loss)])).replace("array", "")
+              .format(* ([exampleCounter + 1] + listOfTrueEquilibria + list([predictedEq]) + [K.get_value(loss)])).replace("array", "")
         print(printString)
         
         #Write the string to the file
@@ -755,4 +765,19 @@ class NashNet_Metrics(tf.keras.callbacks.Callback):
  
 #     def on_batch_end(self, batch, logs={}):
 #         return
+
+#********************************
+def clustering(pred, num_players, num_strategies):
+    '''
+    Function to cluster the predicted Nash equilibria.
+    '''
+    
+    #Run the clustering algorithm
+    clustering = cluster.DBSCAN(eps=0.1, min_samples=1, metric='l2').fit(pred)
+    
+    #Find the number of clusters
+    clusterNumber = np.max(clustering.labels_) + 1
+    
+    #Return the cluster centers
+    return np.reshape(np.array([np.mean(clustering.components_[np.where(clustering.labels_ == clusterCounter)], axis=0) for clusterCounter in range(clusterNumber)]), (clusterNumber, 2, 3))
 
