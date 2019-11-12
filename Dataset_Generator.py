@@ -67,11 +67,11 @@ def compute_nash(game, players = PLAYER_NUMBER):
 	for eq in nashy.support_enumeration():
 		nash1.append(eq)
 		
-	for eq in nashy.lemke_howson_enumeration():
-		nash2.append(eq)
-		
-	for eq in nashy.vertex_enumeration():
-		nash3.append(eq)
+# 	for eq in nashy.lemke_howson_enumeration():
+# 		nash2.append(eq)
+# 		
+# 	for eq in nashy.vertex_enumeration():
+# 		nash3.append(eq)
 		
 	return nash1, nash2, nash3
 
@@ -184,7 +184,7 @@ def generate_dataset(output_games, output_equilibria, process_index, num_generat
 
 			#Store nash in nashes
 			nashes[count] = nash_nSet
-
+			
 			#Increment Count
 			count = count + 1
 			num_generated[process_index] = count
