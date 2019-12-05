@@ -1,9 +1,8 @@
-import pickle, os, csv, time, math, configparser, h5py, re, random, ast
+import os, configparser, ast
 import tensorflow as tf
 import tensorflow.keras as keras
 import numpy as np
 from NashNet_utils import *
-from _ast import If
 
 
 # ********************************
@@ -170,7 +169,7 @@ class NashNet:
         """
         Function to read the game and equilibria data from dataset files.
         The input argument dataset_files should be an array (list, tuple, etc.) of arrays.
-        Each inner array is a pair of (game_file, rquilibrium_file).
+        Each inner array is a pair of (game_file, equilibrium_file).
         This function returns the games and equilibria in two separate numpy arrays.
         """
 
