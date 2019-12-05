@@ -22,7 +22,7 @@ class NashNet:
         self.test_games = self.test_equilibria = np.array([])
 
         # Load config
-        self.load_config(configFile)
+        self.load_config(configFile, configSection=configSection)
 
         # Build the neural network model
         if not self.cfg["enable_hydra"]:
