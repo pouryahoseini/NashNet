@@ -16,11 +16,11 @@ warnings.filterwarnings("ignore")
 # Output
 GENERATED_GAMES_DATASET_NAME = 'Games'
 GENERATED_EQUILIBRIA_DATASET_NAME = 'Equilibria'
-NUMBER_OF_SAMPLES = 1000000
+NUMBER_OF_SAMPLES = 100
 
 # Game Settings
 MAXIMUM_EQUILIBRIA_PER_GAME = 25
-PLAYER_NUMBER = 2
+PLAYER_NUMBER = 3
 PURE_STRATEGIES_PER_PLAYER = 3
 
 # Equilibrium filtering
@@ -87,10 +87,9 @@ def compute_nash(game, players=PLAYER_NUMBER):
         games_set = gambit.Game.from_arrays(*splitGames)
 
         if PLAYER_NUMBER > 2:
-            # solver = gambit.nash.ExternalGlobalNewtonSolver()
-            solver = gambit.nash.ExternalLyapunovSolver()
+            solver = gambit.nash.ExternalGlobalNewtonSolver()
         else:
-            solver = gambit.nash.ExternalLCPSolver()
+            solver = gambit.nash.ExternalEnumMixedSolver()
         nash_eqs = solver.solve(games_set)
         for eq in nash_eqs:
             nash_eq.append(np.reshape(np.array(eq._profile).astype(np.float), (players, -1)))
@@ -105,7 +104,7 @@ def convertToN(array, max_nashes=MAXIMUM_EQUILIBRIA_PER_GAME, players=PLAYER_NUM
 	Function to set the number of listed equilibria to a fixed value
 	'''
 
-    # Create numpy array to store nashes
+    # Create numpy array to store Nash equilibria
     nash = np.zeros((max_nashes, players, strategies))
 
     # Create itertools cycle
@@ -181,15 +180,20 @@ def generate_dataset(output_games, output_equilibria, process_index, num_generat
     # Loop
     count = 0
 
-    while (count < num_games):
+    while count < num_games:
         # Put game generation in a try statement and catch runtime warning if
-        #	the game is degenerate, retry without incrementing count
+        # the game is degenerate (in the case of Nashpy), retry without incrementing count
         try:
             # Generate a game
             g = generate_game(players=players, size=strategies)
 
             # Get the nash equilibria
             eq = compute_nash(g)
+
+            # Check to remove degenerate games in Gambit (where all the probabilities are zero)
+            sum_prob = np.sum(sum(eq))
+            if sum_prob == 0:
+                continue
 
             # If enabled, discard games containing pure strategy equilibria
             skip = skip2 = False
@@ -209,7 +213,7 @@ def generate_dataset(output_games, output_equilibria, process_index, num_generat
             # If it got here, game is not degenerate
             games[count] = g
             if USE_GAMBIT:
-                games[count] = (games[count] - np.min(games[count])) / np.max(games[count]) - np.min(games[count])
+                games[count] = (games[count].astype(np.float) - np.min(games[count])) / (np.max(games[count]) - np.min(games[count]))
 
             # Set the number of Nash equilibria to a predefined one
             nash_nSet = convertToN(eq, max_nashes=max_nashes, players=players, strategies=strategies)
