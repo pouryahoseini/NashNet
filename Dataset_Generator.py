@@ -191,8 +191,7 @@ def generate_dataset(output_games, output_equilibria, process_index, num_generat
             eq = compute_nash(g)
 
             # Check to remove degenerate games in Gambit (where all the probabilities are zero)
-            sum_prob = np.sum(sum(eq))
-            if sum_prob == 0:
+            if np.sum(sum(eq)) == 0:
                 continue
 
             # If enabled, discard games containing pure strategy equilibria
