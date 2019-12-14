@@ -3,6 +3,7 @@ import tensorflow as tf
 import tensorflow.keras as keras
 import numpy as np
 from NashNet_utils import *
+import logging
 
 
 # ********************************
@@ -20,6 +21,10 @@ class NashNet:
 
         # Initialize variables
         self.test_games = self.test_equilibria = np.array([])
+
+        # Set Tensorflow's verbosity
+        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'  # WARN
+        logging.getLogger('tensorflow').setLevel(logging.WARN)
 
         # Load config
         self.load_config(configFile, configSection=configSection)
