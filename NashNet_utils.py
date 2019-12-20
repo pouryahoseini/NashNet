@@ -473,10 +473,10 @@ def build_model(num_players, pure_strategies_per_player, max_equilibria, optimiz
 
     # Build input layer & flatten it (so we can connect to the fully connected (Dense) layers)
     input_layer = tf.keras.layers.Input(shape=input_shape)
-    flattened_input = tf.keras.layers.Flatten(input_shape=input_shape)(input_layer)
+    flattened_input = tf.keras.layers.Flatten()(input_layer)
 
     # Build dense layers
-    layer_sizes = [200, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 200, 100]
+    layer_sizes = [200, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 200, 100]
     current_layer = flattened_input
     for size in layer_sizes:
         if enable_batchNormalization:
@@ -498,7 +498,7 @@ def build_model(num_players, pure_strategies_per_player, max_equilibria, optimiz
         softmax.append(tf.keras.layers.Activation('softmax')(last_layer_player[playerCounter]))
 
     # Create the output layer
-    concatenated_output = tf.keras.layers.concatenate([softmax[pl] for pl in range(num_players)])
+    concatenated_output = tf.keras.layers.concatenate(softmax)
     replicated_output = tf.keras.layers.concatenate([concatenated_output for _ in range(max_equilibria)])
     output_layer = tf.keras.layers.Reshape((max_equilibria, num_players, pure_strategies_per_player))(replicated_output)
 
@@ -558,7 +558,7 @@ def build_hydra_model(num_players, pure_strategies_per_player, max_equilibria, o
             current_layer = tf.keras.layers.Dense(size, activation='relu')(current_layer)
     final_common_dense = current_layer
 
-    # Build dense (fully conncted) layers for each neural head
+    # Build dense (fully connected) layers for each neural head
     final_dense = [None] * max_equilibria
     current_layer = final_common_dense
     for headCounter in range(max_equilibria):
@@ -590,8 +590,7 @@ def build_hydra_model(num_players, pure_strategies_per_player, max_equilibria, o
     # Create the output layer
     head_output = [None] * max_equilibria
     for headCounter in range(max_equilibria):
-        head_output[headCounter] = tf.keras.layers.concatenate(
-            [softmax[headCounter][playerCounter] for playerCounter in range(num_players)])
+        head_output[headCounter] = tf.keras.layers.concatenate(softmax[headCounter])
 
     concatenated_heads = tf.keras.layers.concatenate(
         [head_output[headCounter] for headCounter in range(max_equilibria)])
@@ -757,10 +756,12 @@ def printExamples(numberOfExamples, testSamples, testEqs, nn_model, examples_pri
     Function to make some illustrative predictions and print them
     """
 
-    # Check the rquested number of examples is feasible
+    # Check the requested number of examples is feasible
     if numberOfExamples > testSamples.shape[0]:
         print("\n\nNumber of example predictions more than the number of test samples\n")
         exit()
+    elif numberOfExamples == 0:
+        return
 
     # Fetching an example game from the test set
     randomExample = random.randint(0, testSamples.shape[0] - numberOfExamples)
