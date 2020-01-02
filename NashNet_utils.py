@@ -488,9 +488,13 @@ def build_model(num_players, pure_strategies_per_player, max_equilibria, optimiz
     final_dense = current_layer
 
     # Create output for each player
-    last_layer_player = [tf.keras.layers.Dense(pure_strategies_per_player)(final_dense)]
-    for _ in range(1, num_players):
-        last_layer_player.append(tf.keras.layers.Dense(pure_strategies_per_player)(final_dense))
+    layer_sizes_per_player = [50, 50, 30]
+    last_layer_player = []
+    for _ in range(num_players):
+        current_layer = tf.keras.layers.Dense(layer_sizes_per_player[0])(final_dense)
+        for size in layer_sizes_per_player[1:]:
+            current_layer = tf.keras.layers.Dense(size)(current_layer)
+        last_layer_player.append(tf.keras.layers.Dense(pure_strategies_per_player)(current_layer))
 
     # Create softmax layers
     softmax = [tf.keras.layers.Activation('softmax')(last_layer_player[0])]
@@ -572,12 +576,15 @@ def build_hydra_model(num_players, pure_strategies_per_player, max_equilibria, o
         final_dense[headCounter] = current_layer
 
     # Create output for each player and each head
+    layer_sizes_per_player = [50, 50, 30]
     last_layer_player = [None] * max_equilibria
     for headCounter in range(max_equilibria):
-        last_layer_player[headCounter] = [tf.keras.layers.Dense(pure_strategies_per_player)(final_dense[headCounter])]
-        for _ in range(1, num_players):
-            last_layer_player[headCounter].append(
-                tf.keras.layers.Dense(pure_strategies_per_player)(final_dense[headCounter]))
+        last_layer_player[headCounter] = []
+        current_layer = tf.keras.layers.Dense(layer_sizes_per_player[0])(final_dense[headCounter])
+        for _ in range(num_players):
+            for size in layer_sizes_per_player[1:]:
+                current_layer = tf.keras.layers.Dense(size)(current_layer)
+            last_layer_player[headCounter].append(tf.keras.layers.Dense(pure_strategies_per_player)(current_layer))
 
     # Create softmax layers (since games have been normalized so all values are between 0 and 1)
     softmax = [None] * max_equilibria
