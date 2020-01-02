@@ -599,8 +599,7 @@ def build_hydra_model(num_players, pure_strategies_per_player, max_equilibria, o
     for headCounter in range(max_equilibria):
         head_output[headCounter] = tf.keras.layers.concatenate(softmax[headCounter])
 
-    concatenated_heads = tf.keras.layers.concatenate(
-        [head_output[headCounter] for headCounter in range(max_equilibria)])
+    concatenated_heads = tf.keras.layers.concatenate(head_output)
     output_layer = tf.keras.layers.Reshape((max_equilibria, num_players, pure_strategies_per_player))(
         concatenated_heads)
 
