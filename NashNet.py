@@ -20,6 +20,7 @@ class NashNet:
         """
 
         # Initialize variables
+        self.trained_model_loaded = False
         self.test_games = self.test_equilibria = np.array([])
 
         # Set Tensorflow's verbosity
@@ -108,13 +109,21 @@ class NashNet:
         saveModel(self.model, self.cfg["model_architecture_file"], self.cfg["model_weights_file"])
 
         # Write the loss and metric values during the training and test time
-        saveHistory(trainingHistory, self.model, self.cfg["training_history_file"])
+        save_training_history(trainingHistory, self.cfg["training_history_file"])
+
+        # Indicate trained model is ready
+        self.trained_model_loaded = True
 
     # ******
     def evaluate(self, num_to_print=None):
         """
         Function to evaluate NashNet.
         """
+
+        # Load model weights if the model is not loaded yet
+        if not self.trained_model_loaded:
+            self.model.load_weights(os.path.join('./Model/' + self.cfg["model_weights_file"] + '.h5'))
+            self.trained_model_loaded = True
 
         # If no num_to_print is provided, default to setting in cfg
         if not num_to_print:
@@ -135,7 +144,7 @@ class NashNet:
                                                                            index=False)
 
         # Print examples
-        self.printExamples()
+        self.printExamples(num_to_print)
 
     # ******
     def printExamples(self, num_to_print=None):
@@ -179,8 +188,10 @@ class NashNet:
         """
 
         # Set where to look for the dataset files
-        dataset_directory = './Datasets/' + str(self.cfg["num_players"]) + 'P/' + str(
-            self.cfg["num_strategies"]) + 'x' + str(self.cfg["num_strategies"]) + '/'
+        dataset_directory = './Datasets/' + str(self.cfg["num_players"]) + 'P/' + str(self.cfg["num_strategies"][0])
+        for strategy in self.cfg["num_strategies"][1:]:
+            dataset_directory += 'x' + str(strategy)
+        dataset_directory += '/'
 
         if not os.path.isdir(dataset_directory):
             print('\n\nError: The dataset directory does not exist.\n\n')
@@ -209,9 +220,9 @@ class NashNet:
 
                 if firstTime:
                     sampleGames = np.empty(
-                        shape=(0, self.cfg["num_players"], self.cfg["num_strategies"], self.cfg["num_strategies"]))
-                    sampleEquilibria = np.empty(shape=(
-                    0, sampleEquilibria_currentType.shape[1], self.cfg["num_players"], self.cfg["num_strategies"]))
+                        shape=(0, self.cfg["num_players"]) + tuple(self.cfg["num_strategies"]))
+                    sampleEquilibria = np.empty(shape=(0, sampleEquilibria_currentType.shape[1],
+                                                       self.cfg["num_players"], max(self.cfg["num_strategies"])))
                     firstTime = False
 
                 # Extract the requested number of samples and combine the arrays of different types
@@ -220,11 +231,9 @@ class NashNet:
                         typeNumber] + ' is more than the samples in the dataset files provided.\n')
                 else:
                     sampleGames = np.append(sampleGames,
-                                            sampleGames_currentType[: self.cfg['dataset_types_quota'][typeNumber], :, :,
-                                            :], axis=0)
+                                            sampleGames_currentType[: self.cfg['dataset_types_quota'][typeNumber]], axis=0)
                     sampleEquilibria = np.append(sampleEquilibria, sampleEquilibria_currentType[
-                                                                   : self.cfg['dataset_types_quota'][typeNumber], :, :,
-                                                                   :], axis=0)
+                                                                   : self.cfg['dataset_types_quota'][typeNumber]], axis=0)
             elif self.cfg['dataset_types_quota'][typeNumber] > 0:
                 raise Exception('\nThe requested quota for ' + dataset_typeNames[
                     typeNumber] + ' is more than zero, but no dataset files provided.\n')
@@ -241,10 +250,11 @@ class NashNet:
 
         # Normalize if set to do so
         if self.cfg["normalize_input_data"]:
-            sampleGames = (sampleGames - np.reshape(np.min(sampleGames, axis=(1, 2, 3)),
-                                                    (sampleGames.shape[0], 1, 1, 1))) / np.reshape(
-                np.max(sampleGames, axis=(1, 2, 3)) - np.min(sampleGames, axis=(1, 2, 3)),
-                (sampleGames.shape[0], 1, 1, 1))
+            axes_except_zero = (ax for ax in range(1, len(sampleGames.shape)))
+            scalar_dim_except_zero = (sampleGames.shape[0],) + (1,) * (len(sampleGames.shape) - 1)
+            sampleGames = (sampleGames - np.reshape(np.min(sampleGames, axis=axes_except_zero), scalar_dim_except_zero)) / \
+                          np.reshape(np.max(sampleGames, axis=axes_except_zero) -
+                                       np.min(sampleGames, axis=axes_except_zero), scalar_dim_except_zero)
 
         # Extract the training and test data
         sample_no = sampleGames.shape[0]
@@ -278,7 +288,7 @@ class NashNet:
 
         # Load all the necessary configurations
         self.cfg["num_players"] = config_parser.getint(configSection, "num_players")
-        self.cfg["num_strategies"] = config_parser.getint(configSection, "num_strategies")
+        self.cfg["num_strategies"] = ast.literal_eval(config_parser.get(configSection, "num_strategies"))
         self.cfg["max_equilibria"] = config_parser.getint(configSection, "max_equilibria")
         self.cfg["initial_model_weights"] = config_parser.get(configSection, "initial_model_weights")
         self.cfg["validation_split"] = config_parser.getfloat(configSection, "validation_split")

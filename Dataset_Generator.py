@@ -6,22 +6,25 @@ import threading
 import math
 import time
 import warnings
+import ast
+import sys
+import signal
+import os
 
 # Suppress warnings. (To mute Nashpy's verbose warnings about degenerate games)
 warnings.filterwarnings("ignore")
-
 
 # Global Variables
 # ************************
 # Output
 GENERATED_GAMES_DATASET_NAME = 'Games'
 GENERATED_EQUILIBRIA_DATASET_NAME = 'Equilibria'
-NUMBER_OF_SAMPLES = 100
+NUMBER_OF_SAMPLES = 1000000
 
 # Game Settings
-MAXIMUM_EQUILIBRIA_PER_GAME = 25
+MAXIMUM_EQUILIBRIA_PER_GAME = 20
 PLAYER_NUMBER = 3
-PURE_STRATEGIES_PER_PLAYER = 3
+PURE_STRATEGIES_PER_PLAYER = [3, 4, 3]
 
 # Equilibrium filtering
 DISCARD_NON_MIXED_STRATEGY_GAMES = False
@@ -39,33 +42,37 @@ else:
 # Multi-threading
 CPU_CORES = 8
 
+# Timeout Setting (seconds)
+TIMEOUT_PER_SAMPLE = 2
+
 
 # ************************
-def generate_game(players=PLAYER_NUMBER, size=PURE_STRATEGIES_PER_PLAYER):
+def generate_game(players, strategies_per_player):
     """
 	Function to generate a game with values between 0 and 1
 	"""
 
     if not USE_GAMBIT:
-        game = np.zeros((players,) + (size,) * players)
+        game = np.zeros((players,) + tuple(strategies_per_player))
 
         for i in range(players):
-            game[i] = np.random.rand(*((size,) * players))
+            game[i] = np.random.rand(*tuple(strategies_per_player))
     else:
-        game = np.zeros((players,) + (size,) * players, dtype=gambit.Rational)
+        game = np.zeros((players,) + tuple(strategies_per_player), dtype=gambit.Rational)
 
         for i in range(players):
-            game[i] = np.random.randint(0, 1e6, (size,) * players)
+            game[i] = np.random.randint(0, 1e6, tuple(strategies_per_player))
 
     return game
 
 
 # ************************
-def compute_nash(game, players=PLAYER_NUMBER):
+def compute_nash(game):
     """
 	Function to compute Nash equilibrium of a game
 	"""
 
+    players = game.shape[0]
     splitGames = np.split(game, players, axis=0)
 
     for i, g in enumerate(splitGames):
@@ -77,7 +84,8 @@ def compute_nash(game, players=PLAYER_NUMBER):
 
         nash_eqs = games_set.support_enumeration()
         for eq in nash_eqs:
-            nash_eq.append(eq)
+            eq_fixed_size = np.array(list(itertools.zip_longest(*eq, fillvalue=np.nan))).T
+            nash_eq.append(eq_fixed_size)
         # 	for eq in games_set.lemke_howson_enumeration():
         # 		nash.append(eq)
         #
@@ -90,16 +98,18 @@ def compute_nash(game, players=PLAYER_NUMBER):
             solver = gambit.nash.ExternalGlobalNewtonSolver()
         else:
             solver = gambit.nash.ExternalEnumMixedSolver()
+
         nash_eqs = solver.solve(games_set)
         for eq in nash_eqs:
-            nash_eq.append(np.reshape(np.array(eq._profile).astype(np.float), (players, -1)))
+            eq_list = ast.literal_eval(str(eq._profile))
+            eq_fixed_size = np.array(list(itertools.izip_longest(*eq_list, fillvalue=np.nan))).T
+            nash_eq.append(eq_fixed_size.astype(np.float))
 
     return nash_eq
 
 
 # ************************
-def convertToN(array, max_nashes=MAXIMUM_EQUILIBRIA_PER_GAME, players=PLAYER_NUMBER,
-               strategies=PURE_STRATEGIES_PER_PLAYER):
+def convertToN(array, max_nashes, players, strategies):
     '''
 	Function to set the number of listed equilibria to a fixed value
 	'''
@@ -112,7 +122,7 @@ def convertToN(array, max_nashes=MAXIMUM_EQUILIBRIA_PER_GAME, players=PLAYER_NUM
 
     # Iterate through list and indices
     for i, elem in zip(range(max_nashes), cycle):
-        nash[i] = np.array(elem)
+        nash[i] = elem
 
     return nash
 
@@ -126,8 +136,8 @@ def discardNonMixedStrategyGames(equilibria):
     skip = False
 
     for eq in equilibria:
-        ravelledEquilibrium = np.ravel(eq)
-        if np.logical_or(ravelledEquilibrium == 0, ravelledEquilibrium == 1).all():
+        unravelled_equilibrium = np.ravel(eq)
+        if np.logical_or(np.logical_or(unravelled_equilibrium == 0, unravelled_equilibrium == 1), unravelled_equilibrium == np.nan).all():
             skip = True
             break
 
@@ -144,8 +154,8 @@ def filterPureStrategies(equilibria):
     filteredEquilibria = []
 
     for eq in equilibria:
-        ravelledEquilibrium = np.ravel(eq)
-        if np.logical_and(ravelledEquilibrium > 0, ravelledEquilibrium < 1).any():
+        unravelled_equilibrium = np.ravel(eq)
+        if np.logical_and(unravelled_equilibrium > 0, unravelled_equilibrium < 1).any():
             skip = False
             filteredEquilibria += (eq,)
 
@@ -169,13 +179,30 @@ def discardSingleEquilibriumGames(equilibria):
 def generate_dataset(output_games, output_equilibria, process_index, num_generated, num_games=NUMBER_OF_SAMPLES,
                      max_nashes=MAXIMUM_EQUILIBRIA_PER_GAME, players=PLAYER_NUMBER,
                      strategies=PURE_STRATEGIES_PER_PLAYER):
-    '''
+    """
 	Function to generate games and compute their Nash equilibria
-	'''
+	"""
 
-    # Create an empty numpy array with proper shape for games and nashes
-    games = np.zeros((num_games, players) + (strategies, ) * players)
-    nashes = np.zeros((num_games, max_nashes, players, strategies))
+    # Check Python version
+    if USE_GAMBIT:
+        assert sys.version_info.major == 2, 'Gambit works only in Python 2.'
+    else:
+        assert sys.version_info.major == 3, 'Nashpy works only in Python 3.'
+
+    # Check if Nashpy is not assigned for solving games with more than 2 players, as it is unable to work on those games
+    if not USE_GAMBIT:
+        assert PLAYER_NUMBER == 2, "Nashpy is unable to solve games with more than 2 players."
+
+    # Check if enough strategy numbers are given for players
+    try:
+        assert len(PURE_STRATEGIES_PER_PLAYER) == PLAYER_NUMBER, \
+            'Number of strategies for at least one player is not defined.'
+    except TypeError:
+        raise Exception('Number of strategies for players should be an iterable.')
+
+    # Create an empty numpy array with proper shape for games and Nash equilibria
+    games = np.zeros((num_games, players) + tuple(strategies))
+    nashes = np.zeros((num_games, max_nashes, players, max(strategies)))
 
     # Loop
     count = 0
@@ -183,9 +210,14 @@ def generate_dataset(output_games, output_equilibria, process_index, num_generat
     while count < num_games:
         # Put game generation in a try statement and catch runtime warning if
         # the game is degenerate (in the case of Nashpy), retry without incrementing count
+
+        # Set the timeout
+        signal.alarm(0)
+        signal.alarm(TIMEOUT_PER_SAMPLE)
+
         try:
             # Generate a game
-            g = generate_game(players=players, size=strategies)
+            g = generate_game(players=players, strategies_per_player=strategies)
 
             # Get the nash equilibria
             eq = compute_nash(g)
@@ -212,10 +244,11 @@ def generate_dataset(output_games, output_equilibria, process_index, num_generat
             # If it got here, game is not degenerate
             games[count] = g
             if USE_GAMBIT:
-                games[count] = (games[count].astype(np.float) - np.min(games[count])) / (np.max(games[count]) - np.min(games[count]))
+                games[count] = (games[count].astype(np.float) - np.min(games[count])) / (
+                            np.max(games[count]) - np.min(games[count]))
 
             # Set the number of Nash equilibria to a predefined one
-            nash_nSet = convertToN(eq, max_nashes=max_nashes, players=players, strategies=strategies)
+            nash_nSet = convertToN(eq, max_nashes=max_nashes, players=players, strategies=max(strategies))
 
             # Store nash in nashes
             nashes[count] = nash_nSet
@@ -224,13 +257,28 @@ def generate_dataset(output_games, output_equilibria, process_index, num_generat
             count = count + 1
             num_generated[process_index] = count
 
+        # In case of Nashpy a degenerate game produces this warning
+        # In general, a timeout also produces this warning
         except RuntimeWarning:
+            if USE_GAMBIT:
+                if players > 2:
+                    os.system('killall gambit-gnm >/dev/null 2>&1')
+                else:
+                    os.system('killall gambit-enummixed >/dev/null 2>&1')
             continue
-    # 			print("Warning - game is degenerate")
 
     # Modify the list of games and equilibria
     output_games[process_index] = games
     output_equilibria[process_index] = nashes
+
+
+# ************************
+def timeout_handler(signum, frame):
+    """
+    Function to handle timeout in generating a sample
+    """
+
+    raise RuntimeWarning("Timeout")
 
 
 # ************************
@@ -242,12 +290,12 @@ def track_sampleGeneration_progress(num_generated, num_samples):
     start = time.time()
     total = lastTotal = 0
 
-    while (total < num_samples):
+    while total < num_samples:
         total = 0
         for thread_genNum in num_generated:
             total += thread_genNum
 
-        if ((total - lastTotal) >= 250):
+        if (total - lastTotal) >= 250:
             print("Generated {} games in {} seconds".format(total, int(time.time() - start)))
             lastTotal = total
 
@@ -265,6 +313,9 @@ equilibria = mp.Manager().list([None] * CPU_CORES)
 processes = [None] * CPU_CORES
 numGenerated = mp.Array('i', [0] * (CPU_CORES))
 processQuota = int(math.ceil(float(NUMBER_OF_SAMPLES) / CPU_CORES))
+
+# Set the timeout handling in generating each sample
+signal.signal(signal.SIGALRM, timeout_handler)
 
 # Running the threads to generate the dataset
 for processCounter in range(CPU_CORES - 1):
