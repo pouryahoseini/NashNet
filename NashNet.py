@@ -42,7 +42,8 @@ class NashNet:
                                      lossType=self.cfg["loss_type"],
                                      payoffLoss_type=self.cfg["payoff_loss_type"],
                                      enable_batchNormalization=self.cfg["batch_normalization"],
-                                     payoffToEq_weight=self.cfg["payoff_to_equilibrium_weight"]
+                                     payoffToEq_weight=self.cfg["payoff_to_equilibrium_weight"],
+                                     compute_epsilon=self.cfg["compute_epsilon"]
                                      )
         else:
             self.model = build_hydra_model(num_players=self.cfg["num_players"],
@@ -56,7 +57,8 @@ class NashNet:
                                            payoffLoss_type=self.cfg["payoff_loss_type"],
                                            enable_batchNormalization=self.cfg["batch_normalization"],
                                            hydra_shape=self.cfg["hydra_physique"],
-                                           payoffToEq_weight=self.cfg["payoff_to_equilibrium_weight"]
+                                           payoffToEq_weight=self.cfg["payoff_to_equilibrium_weight"],
+                                           compute_epsilon=self.cfg["compute_epsilon"]
                                            )
 
         # Load initial model weights if any one is provided in the config file or in the constructor arguments
@@ -84,25 +86,31 @@ class NashNet:
         # Print the summary of the model
         print(self.model.summary())
 
+        # Create the list of callbacks
+        callbacks_list = [TrainingCallback(initial_lr=self.cfg["initial_learning_rate"],
+                                           num_cycles=self.cfg["num_cycles"],
+                                           max_epochs=self.cfg["epochs"],
+                                           save_dir='./Model/Interim/',
+                                           save_name="interimWeight"),
+                          keras.callbacks.ModelCheckpoint(filepath='./Model/' + self.cfg[
+                              "model_best_weights_file"] + '.h5',
+                                                          monitor='val_loss',
+                                                          verbose=0,
+                                                          save_best_only=True,
+                                                          save_weights_only=True,
+                                                          mode='min',
+                                                          save_freq='epoch')]
+
+        if self.cfg["compute_epsilon"]:
+            callbacks_list += [EpsilonCallback()]
+
         # Train the model
         trainingHistory = self.model.fit(training_games, training_equilibria,
                                          validation_split=self.cfg["validation_split"],
                                          epochs=self.cfg["epochs"],
                                          batch_size=self.cfg["batch_size"],
                                          shuffle=True,
-                                         callbacks=[NashNet_Metrics(initial_lr=self.cfg["initial_learning_rate"],
-                                                                    num_cycles=self.cfg["num_cycles"],
-                                                                    max_epochs=self.cfg["epochs"],
-                                                                    save_dir='./Model/Interim/',
-                                                                    save_name="interimWeight"),
-                                                    keras.callbacks.ModelCheckpoint(filepath='./Model/' + self.cfg[
-                                                        "model_best_weights_file"] + '.h5',
-                                                                                    monitor='val_loss',
-                                                                                    verbose=0,
-                                                                                    save_best_only=True,
-                                                                                    save_weights_only=True,
-                                                                                    mode='min',
-                                                                                    save_freq='epoch')]
+                                         callbacks=callbacks_list
                                          )
 
         # Save the model
@@ -136,8 +144,18 @@ class NashNet:
                                                                  self.cfg["max_equilibria"], self.cfg["num_players"],
                                                                  self.cfg["num_strategies"])
 
+        # Create the list of callbacks
+        callbacks_list = []
+        if self.cfg["compute_epsilon"]:
+            epsilon_callback = EpsilonCallback()
+            callbacks_list += [epsilon_callback]
+
         # Test the trained model
-        evaluationResults = self.model.evaluate(self.test_games, self.test_equilibria, batch_size=1024)
+        evaluationResults = self.model.evaluate(self.test_games, self.test_equilibria, batch_size=1024, callbacks=callbacks_list)
+
+        # Print max epsilon
+        if self.cfg["compute_epsilon"]:
+            print('max_epsilon:', tf.get_static_value(epsilon_callback.logs['max_epsilon']))
 
         # Save evaluation results
         pd.DataFrame([self.model.metrics_names, evaluationResults]).to_csv('./Reports/' + self.cfg["test_results_file"],
@@ -324,6 +342,7 @@ class NashNet:
         self.cfg["hydra_physique"] = config_parser.get(configSection, "hydra_physique")
         self.cfg["model_best_weights_file"] = config_parser.get(configSection, "model_best_weights_file")
         self.cfg["cluster_examples"] = config_parser.getboolean(configSection, "cluster_examples")
+        self.cfg["compute_epsilon"] = config_parser.getboolean(configSection, "compute_epsilon")
         self.cfg["rewrite_saved_test_data_if_model_weights_given"] = config_parser.get(configSection, "rewrite_saved_test_data_if_model_weights_given")
 
         # Check input configurations

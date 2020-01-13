@@ -1,8 +1,6 @@
 import numpy as np
 import tensorflow as tf
 import tensorflow.keras.backend as K
-import nashpy
-import itertools
 import math, random
 import pandas as pd
 from sklearn import cluster
@@ -98,7 +96,8 @@ def hydra_oneSided_MSE(nashEq_proposer, nashEq_proposed):
 @tf.function
 def computePayoff_np(game, equilibrium, pureStrategies_perPlayer, playerNumber):
     """
-    Function to compute the payoff each player gets with the input equilibrium and the input game (games with more than 2 players).
+    Function to compute the payoff each player gets with the input equilibrium and the input game
+    (games with more than 2 players).
     """
 
     # Extract mix strategies of each player
@@ -162,7 +161,8 @@ def computePayoff(game, equilibrium, pureStrategies_perPlayer, *argv):
 # ********************************
 def computePayoff_2dBatch(game, equilibrium, pureStrategies_perPlayer, *argv):
     """
-    Function to compute the payoff each player gets with the input equilibrium and the input game (2 player games) in a 2D batch setting.
+    Function to compute the payoff each player gets with the input equilibrium and the input game (2 player games)
+    in a 2D batch setting.
     """
 
     # Extract mix strategies of each player
@@ -198,7 +198,8 @@ def computePayoff_2dBatch(game, equilibrium, pureStrategies_perPlayer, *argv):
 @tf.function
 def computePayoff_np_2dBatch(game, equilibrium, pureStrategies_perPlayer, playerNumber):
     """
-    Function to compute the payoff each player gets with the input equilibrium and the input game (games with more than 2 players) in a 2D batch setting.
+    Function to compute the payoff each player gets with the input equilibrium and the input game
+    (games with more than 2 players) in a 2D batch setting.
     """
 
     # Extract mix strategies of each player
@@ -303,7 +304,8 @@ def payoff_Eq_MSE(game, pureStrategies_perPlayer, nashEq_true, nashEq_pred, comp
 # ********************************
 def payoffv2_Eq_MSE(game, pureStrategies_perPlayer, nashEq_true, nashEq_pred, computePayoff_function, num_players):
     """
-    Function to compute the the mean square error of equilibria and the mean square error of payoffs resulted from the equilibria.
+    Function to compute the the mean square error of equilibria and the mean square error of payoffs resulted from
+    the equilibria.
     This is not a loss function. It is used by other loss functions to compute their final loss values.
     """
 
@@ -345,7 +347,8 @@ def lossFunction_payoff_MSE(game, payoff_Eq_function, payoffToEq_weight, pureStr
 def lossFunction_payoff_Eq_weightedSum(game, payoff_Eq_function, payoffToEq_weight, pureStrategies_perPlayer,
                                        computePayoff_function, num_players):
     """
-    Function to compute the loss by taking the weighted sum of MSE of equilibria and MSE of payoffs resulted from the equilibria.
+    Function to compute the loss by taking the weighted sum of MSE of equilibria and MSE of payoffs resulted
+    from the equilibria.
     """
 
     def payoff_Eq_weightedSum(nashEq_true, nashEq_pred):
@@ -363,7 +366,8 @@ def lossFunction_payoff_Eq_weightedSum(game, payoff_Eq_function, payoffToEq_weig
 def lossFunction_payoff_Eq_multiplication(game, payoff_Eq_function, payoffToEq_weight, pureStrategies_perPlayer,
                                           computePayoff_function, num_players):
     """
-    Function to compute the loss by taking the multiplication of MSE of equilibria and hyperbolic tangent of MSE of payoffs resulted from the equilibria.
+    Function to compute the loss by taking the multiplication of MSE of equilibria and hyperbolic tangent of MSE of
+    payoffs resulted from the equilibria.
     """
 
     def payoff_Eq_multiplication(nashEq_true, nashEq_pred):
@@ -392,7 +396,8 @@ def hydra_lossFunction_Eq_MSE(*argv):
 # ********************************
 def hydra_payoff_Eq_MSE(game, pureStrategies_perPlayer, nashEq_true, nashEq_pred, computePayoff_function, num_players):
     """
-    Function to compute the maximum of minimum (max-min) of the mean square error of equilibria and the mean square error of payoffs resulted from the associated equilibria.
+    Function to compute the maximum of minimum (max-min) of the mean square error of equilibria and the mean square
+    error of payoffs resulted from the associated equilibria.
     This is not a loss function. It is used by other loss functions to compute their final loss values.
     """
 
@@ -415,13 +420,16 @@ def hydra_payoff_Eq_MSE(game, pureStrategies_perPlayer, nashEq_true, nashEq_pred
 def hydra_oneSided_payoff_Eq_MSE(nashEq_proposer, nashEq_proposed, game, pureStrategies_perPlayer,
                                  computePayoff_function, num_players):
     """
-    Function to compute MSE of equilibria and payoffs from the matched equilibria with a proposer and proposed defined (in Deferred Acceptance Algorithm terms).
+    Function to compute MSE of equilibria and payoffs from the matched equilibria with a proposer and proposed defined
+    (in Deferred Acceptance Algorithm terms).
     """
 
-    # Create a row-wise meshgrid of proposed equilibria for each sample in the batch by adding a new dimension and replicate the array along that
+    # Create a row-wise meshgrid of proposed equilibria for each sample in the batch by adding a new dimension and
+    # replicate the array along that
     proposed_grid = tf.tile(tf.expand_dims(nashEq_proposed, axis=2), [1, 1, tf.shape(nashEq_proposed)[1], 1, 1])
 
-    # Create a column-wise meshgrid of proposer equilibria for each sample in the batch by adding a new dimension and replicate the array along that
+    # Create a column-wise meshgrid of proposer equilibria for each sample in the batch by adding a new dimension and
+    # replicate the array along that
     proposer_grid = tf.tile(tf.expand_dims(nashEq_proposer, axis=1), [1, tf.shape(nashEq_proposer)[1], 1, 1, 1])
 
     # Compute the weight for the final result to recompense the replacement of nans with zeros and its effect
@@ -464,20 +472,20 @@ def hydra_oneSided_payoff_Eq_MSE(nashEq_proposer, nashEq_proposed, game, pureStr
 def hydra_payoffv2_Eq_MSE(game, pureStrategies_perPlayer, nashEq_true, nashEq_pred, computePayoff_function,
                           num_players):
     """
-    Function to compute the maximum of minimum (max-min) of the mean square error of equilibria and the mean square error of payoffs resulted from the equilibria.
+    Function to compute the maximum of minimum (max-min) of the mean square error of equilibria and the mean square
+    error of payoffs resulted from the equilibria.
     This is not a loss function. It is used by other loss functions to compute their final loss values.
     """
 
-    # Run the matching with the true and predicted equilibria as proposer and proposed (in terms of the Deferred Acceptance Algorithm terms) each time
-    eq_MSE_trueProposer, payoff_MSE_trueProposer = hydra_oneSided_payoff_Eq_MSE(nashEq_true, nashEq_pred, game,
-                                                                                pureStrategies_perPlayer,
-                                                                                computePayoff_function, num_players)
-    eq_MSE_trueProposed, payoff_MSE_trueProposed = hydra_oneSided_payoff_Eq_MSE(nashEq_pred, nashEq_true, game,
-                                                                                pureStrategies_perPlayer,
-                                                                                computePayoff_function, num_players)
+    # Run the matching with the true and predicted equilibria as proposer and proposed (in terms of the
+    # Deferred Acceptance Algorithm terms) each time
+    eq_MSE_trueProposer, payoff_MSE_trueProposer = hydra_oneSided_payoffv2_Eq_MSE(
+        nashEq_true, nashEq_pred, game, pureStrategies_perPlayer, computePayoff_function, num_players)
+    eq_MSE_trueProposed, payoff_MSE_trueProposed = hydra_oneSided_payoffv2_Eq_MSE(
+        nashEq_pred, nashEq_true, game, pureStrategies_perPlayer, computePayoff_function, num_players)
 
     loss_Eq_MSE = K.mean((eq_MSE_trueProposer + eq_MSE_trueProposed) / 2.0)
-    loss_payoff_MSE = K.mean((payoff_MSE_trueProposer + payoff_MSE_trueProposed) / 2.0)
+    loss_payoff_MSE = (payoff_MSE_trueProposer + payoff_MSE_trueProposed) / 2.0
 
     return loss_Eq_MSE, loss_payoff_MSE
 
@@ -486,7 +494,8 @@ def hydra_payoffv2_Eq_MSE(game, pureStrategies_perPlayer, nashEq_true, nashEq_pr
 def hydra_oneSided_payoffv2_Eq_MSE(nashEq_proposer, nashEq_proposed, game, pureStrategies_perPlayer,
                                    computePayoff_function, num_players):
     """
-    Function to compute MSE of equilibria and payoffs with a proposer and proposed defined (in Deferred Acceptance Algorithm terms).
+    Function to compute MSE of equilibria and payoffs with a proposer and proposed defined
+    (in Deferred Acceptance Algorithm terms).
     """
 
     # Compute payoffs given the equilibria
@@ -495,14 +504,17 @@ def hydra_oneSided_payoffv2_Eq_MSE(nashEq_proposer, nashEq_proposed, game, pureS
     payoff_proposer = computePayoff_function['computePayoff_2dBatch'](game, nashEq_proposer, pureStrategies_perPlayer,
                                                                       num_players)
 
-    # Create a row-wise meshgrid of proposed payoffs for each sample in the batch by adding a new dimension and replicate the array along that
+    # Create a row-wise meshgrid of proposed payoffs for each sample in the batch by adding a new dimension and
+    # replicate the array along that
     proposed_grid = tf.tile(tf.expand_dims(payoff_proposed, axis=2), [1, 1, tf.shape(payoff_proposed)[1], 1])
 
-    # Create a column-wise meshgrid of proposer payoffs for each sample in the batch by adding a new dimension and replicate the array along that
+    # Create a column-wise meshgrid of proposer payoffs for each sample in the batch by adding a new dimension and
+    # replicate the array along that
     proposer_grid = tf.tile(tf.expand_dims(payoff_proposer, axis=1), [1, tf.shape(payoff_proposer)[1], 1, 1])
 
     # Compute MSE of payoffs
-    loss_payoff_MSE = K.mean(K.max(K.min(K.mean(K.square(proposed_grid - proposer_grid), axis=3), axis=2), axis=1))
+    squared_error = K.square(proposed_grid - proposer_grid)
+    loss_payoff_MSE = K.mean(K.max(K.min(K.mean(squared_error, axis=3), axis=2), axis=1))
 
     # Compute MSE of equilibria
     loss_Eq_MSE = hydra_MSE(nashEq_proposed, nashEq_proposer)
@@ -512,7 +524,7 @@ def hydra_oneSided_payoffv2_Eq_MSE(nashEq_proposer, nashEq_proposed, game, pureS
 
 # ********************************
 def build_model(num_players, pure_strategies_per_player, max_equilibria, optimizer, lossType, payoffLoss_type,
-                enable_batchNormalization, payoffToEq_weight=None):
+                enable_batchNormalization, payoffToEq_weight=None, compute_epsilon=False):
     """
     Function to create the neural network model of NashNet. It returns the model.
     """
@@ -562,13 +574,19 @@ def build_model(num_players, pure_strategies_per_player, max_equilibria, optimiz
     loss_function, payoffLoss_function, computePayoff_function = chooseLossFunction(lossType, payoffLoss_type,
                                                                                     num_players, enableHydra=False)
 
+    # Create the list of metrics
+    metrics_list = [MSE, PayoffLoss_metric(input_layer, payoffLoss_function, pure_strategies_per_player,
+                                                  computePayoff_function, num_players)]
+    if compute_epsilon:
+        metrics_list += [epsilon_approx(input_layer, pure_strategies_per_player, computePayoff_function, num_players, False),
+                           outperform_eq(input_layer, pure_strategies_per_player, computePayoff_function, num_players, False), max_epsilon]
+
     # Compile the model
     model.compile(experimental_run_tf_function=False,
                   loss=loss_function(input_layer, payoffLoss_function, payoffToEq_weight, pure_strategies_per_player,
                                      computePayoff_function, num_players),
                   optimizer=optimizer,
-                  metrics=[MSE, PayoffLoss_metric(input_layer, payoffLoss_function, pure_strategies_per_player,
-                                                  computePayoff_function, num_players)]
+                  metrics=metrics_list
                   )
 
     # Return the created model
@@ -577,7 +595,7 @@ def build_model(num_players, pure_strategies_per_player, max_equilibria, optimiz
 
 # ********************************
 def build_hydra_model(num_players, pure_strategies_per_player, max_equilibria, optimizer, lossType, payoffLoss_type,
-                      enable_batchNormalization, hydra_shape, payoffToEq_weight=None):
+                      enable_batchNormalization, hydra_shape, payoffToEq_weight=None, compute_epsilon=False):
     """
     Function to create the hydra neural network model of NashNet. It returns the model.
     """
@@ -659,13 +677,21 @@ def build_hydra_model(num_players, pure_strategies_per_player, max_equilibria, o
     loss_function, payoffLoss_function, computePayoff_function = chooseLossFunction(lossType, payoffLoss_type,
                                                                                     num_players, enableHydra=True)
 
+    # Create the list of metrics
+    metrics_list = [hydra_MSE, PayoffLoss_metric(input_layer, payoffLoss_function, pure_strategies_per_player,
+                                                        computePayoff_function, num_players)]
+    if compute_epsilon:
+        metrics_list += [
+            epsilon_approx(input_layer, pure_strategies_per_player, computePayoff_function, num_players, True),
+            outperform_eq(input_layer, pure_strategies_per_player, computePayoff_function, num_players, True),
+            max_epsilon]
+
     # Compile the model
     model.compile(experimental_run_tf_function=False,
                   loss=loss_function(input_layer, payoffLoss_function, payoffToEq_weight, pure_strategies_per_player,
                                      computePayoff_function, num_players),
                   optimizer=optimizer,
-                  metrics=[hydra_MSE, PayoffLoss_metric(input_layer, payoffLoss_function, pure_strategies_per_player,
-                                                        computePayoff_function, num_players)]
+                  metrics=metrics_list
                   )
 
     # Return the created model
@@ -858,9 +884,9 @@ def printExamples(numberOfExamples, testSamples, testEqs, nn_model, examples_pri
 
 
 # ********************************
-class NashNet_Metrics(tf.keras.callbacks.Callback):
+class TrainingCallback(tf.keras.callbacks.Callback):
     """
-    Class to measure some metrics during the training
+    Class to save model and change learning rate during the training
     """
     def __init__(self, initial_lr, num_cycles, max_epochs, save_dir, save_name):
         # Learning Rate Scheduler Variables
@@ -919,3 +945,187 @@ def clustering(pred, num_players, max_pureStrategies):
     return np.reshape(np.array(
         [np.mean(clustering.components_[np.where(clustering.labels_ == clusterCounter)], axis=0) for clusterCounter in
          range(clusterNumber)]), (clusterNumber, num_players, max_pureStrategies))
+
+
+# ********************************
+@tf.function
+def hydra_epsilon_equilibrium(nashEq_predicted, nashEq_true, game, pureStrategies_perPlayer,
+                                 computePayoff_function, num_players):
+    """
+    Function to compute the epsilon in an epsilon-equilibrium setting for the hydra model.
+    """
+
+    # Create a row-wise meshgrid of predicted equilibria for each sample in the batch by adding a new dimension and
+    # replicate the array along that
+    predicted_grid = tf.tile(tf.expand_dims(nashEq_predicted, axis=2), [1, 1, tf.shape(nashEq_predicted)[1], 1, 1])
+
+    # Create a column-wise meshgrid of true equilibria for each sample in the batch by adding a new dimension and
+    # replicate the array along that
+    true_grid = tf.tile(tf.expand_dims(nashEq_true, axis=1), [1, tf.shape(nashEq_true)[1], 1, 1, 1])
+
+    # Compute error grid
+    error_grid = predicted_grid - true_grid
+
+    # Replace nan values with 0
+    error_grid = tf.where(tf.math.is_nan(error_grid), tf.zeros_like(error_grid), error_grid)
+
+    # Computing indices of the minimum of mean of squared error (MSE) of nash equilibria
+    MSE_eq = K.mean(K.square(error_grid), axis=[3, 4])
+    min_index = K.argmin(MSE_eq, axis=2)
+
+    # Convert the indices tensor to make it usable for later tf.gather_nd operations
+    indexGrid = tf.reshape(min_index, (tf.shape(min_index)[0] * tf.shape(min_index)[1], 1, 1, 1))
+
+    # Find the matching true output for each sample in the batch
+    selected_trueNash = tf.squeeze(tf.gather_nd(true_grid, indexGrid, batch_dims=2), axis=2)
+
+    # Compute payoff of true equilibria (shape: [batch, max_eq, players])
+    payoff_true = computePayoff_function['computePayoff_2dBatch'](game, selected_trueNash, pureStrategies_perPlayer,
+                                                                  num_players)
+
+    # Compute the difference in payoff a player when their strategy in true equilibrium is replaced by the predicted
+    # strategy (shape: A list with size of players with each element [batch])
+    epsilon_per_player = []
+    outperform_eq_per_player = []
+    for player in range(num_players):
+        # Replace the prediction for a player on the true equilibrium
+        unstacked_list = tf.unstack(selected_trueNash, axis=2, num=num_players)
+        unstacked_list[player] = nashEq_predicted[:, :, player]
+        approx_on_true = tf.stack(unstacked_list, axis=2)
+
+        # Compute payoff for the modified equilibria
+        approx_payoff_current_player = computePayoff_function['computePayoff_2dBatch'](game, approx_on_true, pureStrategies_perPlayer, num_players)
+
+        # Compute epsilon and possible payoff improvement
+        epsilon_per_player.append(tf.reduce_max(tf.maximum(payoff_true[:, :, player] - approx_payoff_current_player[:, :, player], 0), axis=1))
+        outperform_eq_per_player.append(tf.math.greater(approx_payoff_current_player[:, :, player], payoff_true[:, :, player]))
+
+    # Find the maximum epsilon for all players
+    epsilon_stacked = tf.stack(epsilon_per_player, axis=1)
+    epsilon = tf.reduce_max(epsilon_stacked)
+
+    # Also find if any equilibrium better than the classical methods (true equilibrium) found
+    outperform_stacked = tf.stack(outperform_eq_per_player, axis=1)
+    outperform_no = tf.math.count_nonzero(tf.reduce_all(outperform_stacked, axis=1))
+
+    return epsilon, outperform_no
+
+
+# ********************************
+@tf.function
+def epsilon_equilibrium(game, pureStrategies_perPlayer, nashEq_true, nashEq_pred, computePayoff_function, num_players):
+    """
+    Function to compute the epsilon in an epsilon-equilibrium setting.
+    """
+
+    # Compute error
+    error = nashEq_true - nashEq_pred
+
+    # Replace nan values with 0
+    error = tf.where(tf.math.is_nan(error), tf.zeros_like(error), error)
+
+    # Computing indices of the minimum of mean of squared error (MSE) of nash equilibria
+    MSE_eq = K.mean(K.square(error), axis=[2, 3])
+    min_index = K.argmin(MSE_eq, axis=1)
+
+    # Find the matching true output for each sample in the batch
+    selected_trueNash = tf.gather_nd(nashEq_true, tf.stack((tf.range(0, tf.shape(min_index)[0]), tf.cast(min_index, dtype='int32')), axis=1))
+
+    # Compute payoff of true equilibria (shape: [batch, players])
+    payoff_true = computePayoff_function['computePayoff'](game, selected_trueNash, pureStrategies_perPlayer,
+                                                          num_players)
+
+    # Compute the difference in payoff a player when their strategy in true equilibrium is replaced by the predicted
+    # strategy (shape: A list with size of players with each element [batch])
+    epsilon_per_player = []
+    outperform_eq_per_player = []
+    for player in range(num_players):
+        # Replace the prediction for a player on the true equilibrium
+        unstacked_list = tf.unstack(selected_trueNash, axis=1, num=num_players)
+        unstacked_list[player] = nashEq_pred[:, 0, player]
+        approx_on_true = tf.stack(unstacked_list, axis=1)
+
+        # Compute payoff for the modified equilibrium
+        approx_payoff_current_player = computePayoff_function['computePayoff'](game, approx_on_true, pureStrategies_perPlayer, num_players)
+
+        # Compute epsilon and possible payoff improvement
+        epsilon_per_player.append(tf.maximum(payoff_true[:, player] - approx_payoff_current_player[:, player], 0))
+        outperform_eq_per_player.append(tf.math.greater(approx_payoff_current_player[:, player], payoff_true[:, player]))
+
+    # Find the maximum epsilon for all players
+    epsilon_stacked = tf.stack(epsilon_per_player, axis=1)
+    epsilon = tf.reduce_max(epsilon_stacked)
+
+    # Also find if any equilibrium better than the classical methods (true equilibrium) found
+    outperform_stacked = tf.stack(outperform_eq_per_player, axis=1)
+    outperform_no = tf.math.count_nonzero(tf.reduce_all(outperform_stacked, axis=1))
+
+    return epsilon, outperform_no
+
+
+# ********************************
+def epsilon_approx(game, pureStrategies_perPlayer, computePayoff_function, num_players, hydra_enabled):
+    """
+    Function to find epsilon in an epsilon-equilibrium in the context of approximate Nash equilibrium
+    """
+
+    if hydra_enabled:
+        def epsilon(nashEq_true, nashEq_predicted):
+            epsilon_, _ = hydra_epsilon_equilibrium(nashEq_predicted, nashEq_true, game, pureStrategies_perPlayer, computePayoff_function, num_players)
+            return epsilon_
+    else:
+        def epsilon(nashEq_true, nashEq_predicted):
+            epsilon_, _ = epsilon_equilibrium(game, pureStrategies_perPlayer, nashEq_true, nashEq_predicted, computePayoff_function, num_players)
+            return epsilon_
+
+    return epsilon
+
+
+# ********************************
+def outperform_eq(game, pureStrategies_perPlayer, computePayoff_function, num_players, hydra_enabled):
+    """
+    Function to find number of times predicted values for each player outperforms equilibrium
+    """
+
+    if hydra_enabled:
+        def outperform_no(nashEq_true, nashEq_predicted):
+            _, outperform_no_ = hydra_epsilon_equilibrium(nashEq_predicted, nashEq_true, game, pureStrategies_perPlayer, computePayoff_function, num_players)
+            return outperform_no_
+    else:
+        def outperform_no(nashEq_true, nashEq_predicted):
+            _, outperform_no_ = epsilon_equilibrium(game, pureStrategies_perPlayer, nashEq_true, nashEq_predicted, computePayoff_function, num_players)
+            return outperform_no_
+
+    return outperform_no
+
+
+# ********************************
+class EpsilonCallback(tf.keras.callbacks.Callback):
+    """
+    Class to save model and change learning rate during the training
+    """
+    
+    def __init__(self):
+        # Learning Rate Scheduler Variables
+        self.epsilon = 0
+        self.logs = None
+
+    def on_batch_end(self, batch, logs={}):
+        self.epsilon = tf.maximum(logs.get('epsilon'), self.epsilon)
+        logs['max_epsilon'] = self.epsilon
+
+    def on_epoch_end(self, epoch, logs=None):
+        logs['max_epsilon'] = self.epsilon
+        logs.pop("val_max_epsilon", None)
+
+    def on_test_batch_end(self, batch, logs=None):
+        self.epsilon = tf.maximum(logs.get('epsilon'), self.epsilon)
+        logs['max_epsilon'] = self.epsilon
+        self.logs = logs
+
+    def on_test_end(self, logs=None):
+        self.logs['max_epsilon'] = self.epsilon
+
+
+def max_epsilon(*argv):
+    return 0
