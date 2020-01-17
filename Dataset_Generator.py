@@ -22,9 +22,9 @@ EQUILIBRIA_DATASET_NAME = 'Equilibria'
 NUMBER_OF_SAMPLES = 300
 
 # Game Settings
-MAXIMUM_EQUILIBRIA_PER_GAME = 30
-PLAYER_NUMBER = 3
-PURE_STRATEGIES_PER_PLAYER = [3, 4, 3]
+MAXIMUM_EQUILIBRIA_PER_GAME = 20
+PLAYER_NUMBER = 2
+PURE_STRATEGIES_PER_PLAYER = [3, 3]
 
 # Equilibrium filtering
 DISCARD_NON_MIXED_STRATEGY_GAMES = False
@@ -56,7 +56,7 @@ def generate_game(player_number, strategies_per_player, use_gambit):
         game = np.zeros((player_number,) + tuple(strategies_per_player))
 
         for i in range(player_number):
-            game[i] = np.random.rand(*tuple(strategies_per_player))
+            game[i] = np.random.rand(*tuple(strategies_per_player)).astype(np.float32)
     else:
         game = np.zeros((player_number,) + tuple(strategies_per_player), dtype=gambit.Rational)
 
@@ -85,7 +85,7 @@ def compute_nash(game, use_gambit):
         nash_eqs = games_set.support_enumeration()
         for eq in nash_eqs:
             eq_fixed_size = np.array(list(itertools.zip_longest(*eq, fillvalue=np.nan))).T
-            nash_eq.append(eq_fixed_size)
+            nash_eq.append(eq_fixed_size.astype(np.float32))
         # 	for eq in games_set.lemke_howson_enumeration():
         # 		nash.append(eq)
         #
@@ -104,7 +104,7 @@ def compute_nash(game, use_gambit):
         for eq in nash_eqs:
             eq_list = ast.literal_eval(str(eq._profile))
             eq_fixed_size = np.array(list(itertools.izip_longest(*eq_list, fillvalue=np.nan))).T
-            nash_eq.append(eq_fixed_size.astype(np.float))
+            nash_eq.append(eq_fixed_size.astype(np.float32))
 
     return nash_eq
 
@@ -202,8 +202,8 @@ def generate_dataset(output_games, output_equilibria, process_index, num_generat
         raise Exception('Number of strategies for players should be an iterable.')
 
     # Create an empty numpy array with proper shape for games and Nash equilibria
-    games = np.zeros((num_games, player_number) + tuple(strategies_per_player))
-    nashes = np.zeros((num_games, max_nashes, player_number, max(strategies_per_player)))
+    games = np.zeros((num_games, player_number) + tuple(strategies_per_player), dtype=np.float32)
+    nashes = np.zeros((num_games, max_nashes, player_number, max(strategies_per_player)), dtype=np.float32)
 
     # Loop
     count = 0
@@ -247,7 +247,7 @@ def generate_dataset(output_games, output_equilibria, process_index, num_generat
             # If it got here, game is not degenerate
             games[count] = g
             if use_gambit:
-                games[count] = (games[count].astype(np.float) - np.min(games[count])) / (
+                games[count] = (games[count].astype(np.float32) - np.min(games[count])) / (
                             np.max(games[count]) - np.min(games[count]))
 
             # Set the number of Nash equilibria to a predefined one

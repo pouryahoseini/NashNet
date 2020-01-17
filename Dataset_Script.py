@@ -33,6 +33,8 @@ assert len(PLAYER_NUMBER) == len(PURE_STRATEGIES_PER_PLAYER),\
 
 # Generate the datasets
 for i in range(len(PLAYER_NUMBER)):
+    print('+++Starting to generate a dataset of games with size ' + str(PURE_STRATEGIES_PER_PLAYER[i]))
+
     Dataset_Generator.multi_process_generator(games_dataset_name=GAMES_DATASET_NAME[i],
                                               equilibria_dataset_name=EQUILIBRIA_DATASET_NAME[i],
                                               number_of_samples=NUMBER_OF_SAMPLES,
@@ -45,3 +47,5 @@ for i in range(len(PLAYER_NUMBER)):
                                               use_gambit=USE_GAMBIT,
                                               cpu_cores=CPU_CORES,
                                               timeout_per_sample=TIMEOUT_PER_SAMPLE)
+
+    print('***Finished generating ' + str(NUMBER_OF_SAMPLES) + ' samples of size ' + str(PURE_STRATEGIES_PER_PLAYER[i]) + '\n')
