@@ -8,7 +8,8 @@ DISCARD_SINGLE_EQUILIBRIUM_GAMES = False
 CPU_CORES = 8
 USE_GAMBIT = True
 
-DATASET_NUMBER = 1
+DATASET_NUMBER = 5
+# DATASET_NUMBER = 1
 PLAYER_NUMBER = [2, 2, 2, 2, 3, 3, 2, 2, 2,
                  4, 5, 3, 3, 4, 3, 5, 2, 4]
 PURE_STRATEGIES_PER_PLAYER = [[2, 2], [16, 16], [2, 3], [10, 20], [3, 3, 3], [4, 5, 2], [5, 5], [7, 7], [11, 11],
