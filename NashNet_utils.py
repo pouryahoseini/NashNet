@@ -552,9 +552,9 @@ def build_model(num_players, pure_strategies_per_player, max_equilibria, optimiz
     layer_sizes_per_player = [50, 50, 30]
     last_layer_player = []
     for _ in range(num_players):
-        current_layer = tf.keras.layers.Dense(layer_sizes_per_player[0])(final_dense)
+        current_layer = tf.keras.layers.Dense(layer_sizes_per_player[0], activation='relu')(final_dense)
         for size in layer_sizes_per_player[1:]:
-            current_layer = tf.keras.layers.Dense(size)(current_layer)
+            current_layer = tf.keras.layers.Dense(size, activation='relu')(current_layer)
         last_layer_player.append(tf.keras.layers.Dense(max(pure_strategies_per_player))(current_layer))
 
     # Create softmax layers
@@ -648,9 +648,9 @@ def build_hydra_model(num_players, pure_strategies_per_player, max_equilibria, o
     for headCounter in range(max_equilibria):
         last_layer_player[headCounter] = []
         for _ in range(num_players):
-            current_layer = tf.keras.layers.Dense(layer_sizes_per_player[0])(final_dense[headCounter])
+            current_layer = tf.keras.layers.Dense(layer_sizes_per_player[0], activation='relu')(final_dense[headCounter])
             for size in layer_sizes_per_player[1:]:
-                current_layer = tf.keras.layers.Dense(size)(current_layer)
+                current_layer = tf.keras.layers.Dense(size, activation='relu')(current_layer)
             last_layer_player[headCounter].append(tf.keras.layers.Dense(max(pure_strategies_per_player))(current_layer))
 
     # Create softmax layers (since games have been normalized so all values are between 0 and 1)
