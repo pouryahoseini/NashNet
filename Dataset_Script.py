@@ -1,7 +1,7 @@
 import Dataset_Generator
 
 # Global Variables
-NUMBER_OF_SAMPLES = 1000000
+NUMBER_OF_SAMPLES = 2500000
 MAX_GAME_SIZE = 100000
 DISCARD_NON_MIXED_STRATEGY_GAMES = False
 FILTER_PURE_STRATEGIES = False
@@ -11,10 +11,8 @@ USE_GAMBIT = True
 
 DATASET_NUMBER = 5
 # DATASET_NUMBER = 1
-PLAYER_NUMBER = [2, 2, 2, 2, 3, 3, 2, 2, 2,
-                 4, 5, 3, 3, 4, 3, 5, 2, 4]
-PURE_STRATEGIES_PER_PLAYER = [[2, 2], [16, 16], [2, 3], [10, 20], [3, 3, 3], [4, 5, 2], [5, 5], [7, 7], [11, 11],
-                              [2, 2, 2, 2], [2, 2, 2, 2, 2], [2, 2, 2], [4, 4, 4], [3, 3, 3, 3], [5, 5, 5], [3, 3, 3, 3, 3], [20, 20], [4, 4, 4, 4]]
+PURE_STRATEGIES_PER_PLAYER = [[2, 2], [2, 2, 2, 2, 2], [10, 10], [2, 3], [10, 8], [2, 3, 4], [3, 3], [4, 4], [2, 2, 2], [2, 2, 2, 2]]
+PLAYER_NUMBER = [len(x) for x in PURE_STRATEGIES_PER_PLAYER]
 TIMEOUT_PER_SAMPLE = 5
 MAXIMUM_EQUILIBRIA_PER_GAME = 20
 
@@ -30,8 +28,6 @@ for i, strategy in enumerate(PURE_STRATEGIES_PER_PLAYER):
     EQUILIBRIA_DATASET_NAME.append('Equilibria-{}_{}P-{}_{:.0E}'.format(DATASET_NUMBER, PLAYER_NUMBER[i], strategy_str, MAX_GAME_SIZE))
 
 # Check if the lists match
-assert len(PLAYER_NUMBER) == len(PURE_STRATEGIES_PER_PLAYER),\
-    "The list of player numbers and the list of strategies have different number of elements."
 assert NUMBER_OF_SAMPLES % MAX_GAME_SIZE == 0,\
     "The number of samples must be evenly divisible by max game size."
 
