@@ -248,10 +248,10 @@ def generate_dataset(output_games, output_equilibria, process_index, num_generat
                 continue
 
             # If it got here, game is not degenerate
-            games[count] = g
             if use_gambit:
-                games[count] = (games[count].astype(np.float32) - np.min(games[count])) / (
-                            np.max(games[count]) - np.min(games[count]))
+                games[count] = (g.astype(np.float32) - np.min(g)) / (np.max(g) - np.min(g))
+            else:
+                games[count] = g
 
             # Set the number of Nash equilibria to a predefined one
             nash_nSet = convertToN(eq, max_nashes=max_nashes, player_number=player_number, strategies_per_player=max(strategies_per_player))
