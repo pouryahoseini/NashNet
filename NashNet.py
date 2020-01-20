@@ -162,12 +162,13 @@ class NashNet:
                                                                            index=False)
 
         # Commutativity test
-        average_mae = commutativity_test(tests_games=self.test_games,
-                           test_eq=self.test_equilibria,
-                           model=self.model,
-                           permutation_number=self.cfg["commutativity_test_permutations"],
-                           test_batch_size=self.cfg["test_batch_size"])
-        print('Commutativity test finished. Average mean absolute error: ', average_mae, '\n')
+        if self.cfg["commutativity_test_permutations"] > 0:
+            average_mae = commutativity_test(tests_games=self.test_games,
+                                             test_eq=self.test_equilibria,
+                                             model=self.model,
+                                             permutation_number=self.cfg["commutativity_test_permutations"],
+                                             test_batch_size=self.cfg["test_batch_size"])
+            print('Commutativity test finished. Average mean absolute error: ', average_mae, '\n')
 
         # Print examples
         self.printExamples(num_to_print)

@@ -1143,6 +1143,9 @@ def commutativity_test(tests_games, test_eq, model, permutation_number, test_bat
     :return: Returns the average of mean absolute errors after permutations in the players' strategies
     """
 
+    # Check if at least one permutation is requested
+    assert permutation_number > 0, 'Number of permutations for commutativity test must be more than zero.'
+
     # Find the maximum possible permutations
     max_perm = 1
     for player_strategies in tests_games.shape[2:]:
