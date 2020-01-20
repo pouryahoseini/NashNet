@@ -9,12 +9,13 @@ DISCARD_SINGLE_EQUILIBRIUM_GAMES = False
 CPU_CORES = 8
 USE_GAMBIT = True
 
-DATASET_NUMBER = 5
-# DATASET_NUMBER = 1
+DATASET_NUMBER = 1
 PURE_STRATEGIES_PER_PLAYER = [[2, 2], [2, 2, 2, 2, 2], [10, 10], [2, 3], [10, 8], [2, 3, 4], [3, 3], [4, 4], [2, 2, 2], [2, 2, 2, 2]]
-PLAYER_NUMBER = [len(x) for x in PURE_STRATEGIES_PER_PLAYER]
 TIMEOUT_PER_SAMPLE = 5
 MAXIMUM_EQUILIBRIA_PER_GAME = 20
+
+# Extract list of player numbers
+PLAYER_NUMBER = [len(x) for x in PURE_STRATEGIES_PER_PLAYER]
 
 # Construct the file names
 GAMES_DATASET_NAME = []
