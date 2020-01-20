@@ -277,11 +277,10 @@ class NashNet:
 
         # Normalize if set to do so
         if self.cfg["normalize_input_data"]:
-            axes_except_zero = (ax for ax in range(1, len(sampleGames.shape)))
+            axes_except_zero = tuple([ax for ax in range(1, len(sampleGames.shape))])
             scalar_dim_except_zero = (sampleGames.shape[0],) + (1,) * (len(sampleGames.shape) - 1)
             sampleGames = (sampleGames - np.reshape(np.min(sampleGames, axis=axes_except_zero), scalar_dim_except_zero)) / \
-                          np.reshape(np.max(sampleGames, axis=axes_except_zero) -
-                                       np.min(sampleGames, axis=axes_except_zero), scalar_dim_except_zero)
+                          np.reshape(np.max(sampleGames, axis=axes_except_zero) - np.min(sampleGames, axis=axes_except_zero), scalar_dim_except_zero)
 
         # Extract the training and test data
         sample_no = sampleGames.shape[0]
