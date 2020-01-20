@@ -1129,3 +1129,76 @@ class EpsilonCallback(tf.keras.callbacks.Callback):
 
 def max_epsilon(*argv):
     return 0
+
+
+# ********************************
+def commutativity_test(tests_games, test_eq, model, permutation_number, test_batch_size):
+    """
+    A function to gauge the commutativity property of the model.
+    :param tests_games: True test games
+    :param test_eq: True test equilibria
+    :param model: The trained model
+    :param permutation_number: Number of random permutations to try
+    :param test_batch_size: Batch size of test data
+    :return: Returns the average of mean absolute errors after permutations in the players' strategies
+    """
+
+    # Find the maximum possible permutations
+    max_perm = 1
+    for player_strategies in tests_games.shape[2:]:
+        max_perm *= math.factorial(player_strategies)
+    if permutation_number > max_perm:
+        note_string = '\nWarning: ' + str(permutation_number) + ' permutations requested, but maximum number of unique permutations is ' + str(max_perm)
+        permutation_number = max_perm
+    else:
+        note_string = ''
+
+    # Print the starting message
+    print('Starting the commutativity test. Number of random permutations: ' + str(permutation_number) + note_string)
+
+    # Compute the weight to compensate for the zeros replaced in place of nan values
+    nan_count = tf.reduce_sum(tf.cast(tf.logical_not(tf.greater(test_eq[0][0], -1)), tf.int32))
+    eq_n_elements = tf.size(test_eq[0][0])
+    compensation_factor = tf.cast(eq_n_elements / (eq_n_elements - nan_count), tf.float32)
+
+    # Save the original unpermuted games
+    original_tests_games = tests_games.copy()
+
+    # Test different permutations
+    average_mae = 0
+    for permute_no in range(permutation_number):
+        # Print a message
+        print('Starting permutation ' + str(permute_no + 1))
+
+        # Permute the strategies for each player
+        for idx, pl_strategies in enumerate(original_tests_games.shape[2:]):
+            indices = tuple(np.random.permutation(pl_strategies))
+            tests_games = np.take(tests_games, indices=indices, axis=(idx + 2))
+
+        mae = 0
+        for start_sample in range(0, tests_games.shape[0], test_batch_size):
+
+            # Predict the equilibrium for the original games
+            original_eq = model.predict(original_tests_games[start_sample: start_sample + test_batch_size])
+
+            # Save number of samples in the current batch
+            sample_number = original_tests_games[start_sample: start_sample + test_batch_size].shape[0]
+
+            # Predict the permuted game
+            new_eq = model.predict(tests_games[start_sample: start_sample + test_batch_size])
+
+            # Compute the mean absolute difference
+            absolute_error = tf.math.abs(original_eq - new_eq)
+
+            # Replace the dummy outputs (in the case of asymmetric games) with zero
+            absolute_error = tf.where(tf.math.is_nan(test_eq[start_sample: start_sample + test_batch_size]), tf.zeros_like(absolute_error), absolute_error)
+
+            # Compute the average of absolute errors
+            mae += tf.reduce_mean(absolute_error) * compensation_factor * sample_number
+
+        mae /= tests_games.shape[0]
+        average_mae += mae
+
+    average_mae /= permutation_number
+
+    return average_mae

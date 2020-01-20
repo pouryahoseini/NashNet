@@ -151,7 +151,7 @@ class NashNet:
             callbacks_list += [epsilon_callback]
 
         # Test the trained model
-        evaluationResults = self.model.evaluate(self.test_games, self.test_equilibria, batch_size=1024, callbacks=callbacks_list)
+        evaluationResults = self.model.evaluate(self.test_games, self.test_equilibria, batch_size=self.cfg["test_batch_size"], callbacks=callbacks_list)
 
         # Print max epsilon
         if self.cfg["compute_epsilon"]:
@@ -160,6 +160,14 @@ class NashNet:
         # Save evaluation results
         pd.DataFrame([self.model.metrics_names, evaluationResults]).to_csv('./Reports/' + self.cfg["test_results_file"],
                                                                            index=False)
+
+        # Commutativity test
+        average_mae = commutativity_test(tests_games=self.test_games,
+                           test_eq=self.test_equilibria,
+                           model=self.model,
+                           permutation_number=self.cfg["commutativity_test_permutations"],
+                           test_batch_size=self.cfg["test_batch_size"])
+        print('Commutativity test finished. Average mean absolute error: ', average_mae, '\n')
 
         # Print examples
         self.printExamples(num_to_print)
@@ -343,6 +351,8 @@ class NashNet:
         self.cfg["model_best_weights_file"] = config_parser.get(configSection, "model_best_weights_file")
         self.cfg["cluster_examples"] = config_parser.getboolean(configSection, "cluster_examples")
         self.cfg["compute_epsilon"] = config_parser.getboolean(configSection, "compute_epsilon")
+        self.cfg["test_batch_size"] = config_parser.getint(configSection, "test_batch_size")
+        self.cfg["commutativity_test_permutations"] = config_parser.getint(configSection, "commutativity_test_permutations")
         self.cfg["rewrite_saved_test_data_if_model_weights_given"] = config_parser.get(configSection, "rewrite_saved_test_data_if_model_weights_given")
 
         # Check input configurations
