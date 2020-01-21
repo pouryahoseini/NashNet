@@ -203,10 +203,8 @@ def generate_dataset(output_games, output_equilibria, process_index, num_generat
         raise Exception('Number of strategies for players should be an iterable.')
 
     # Create an empty numpy array with proper shape for games and Nash equilibria
-    temp_games_filename = os.path.join("./Datasets/", "temp_games_process{}.dat".format(process_index))
-    temp_eq_filename = os.path.join("./Datasets/", "temp_equilibria_process{}.dat".format(process_index))
-    games = np.memmap(temp_games_filename, shape=((num_games, player_number) + tuple(strategies_per_player)), dtype=np.float32, mode='w+')
-    nashes = np.memmap(temp_eq_filename, shape=(num_games, max_nashes, player_number, max(strategies_per_player)), dtype=np.float32, mode='w+')
+    games = np.zeros(((num_games, player_number) + tuple(strategies_per_player)), dtype=np.float32)
+    nashes = np.zeros((num_games, max_nashes, player_number, max(strategies_per_player)), dtype=np.float32)
 
     # Loop
     count = 0
@@ -276,13 +274,6 @@ def generate_dataset(output_games, output_equilibria, process_index, num_generat
     # Modify the list of games and equilibria
     output_games[process_index] = games
     output_equilibria[process_index] = nashes
-
-    # Delete the memory mapped arrays
-    del games
-    del nashes
-    gc.collect()
-    os.remove(temp_games_filename)
-    os.remove(temp_eq_filename)
 
 
 # ************************
@@ -363,28 +354,12 @@ def multi_process_generator(games_dataset_name, equilibria_dataset_name, number_
     trackerThread.join()
 
     # Stack up the numpy arrays resulted from each thread
-    temp_agg_games_filename = os.path.join("./Datasets/", "temp_games_agg.dat")
-    temp_agg_eq_filename = os.path.join("./Datasets/", "temp_equilibria_agg.dat")
-    games_agg = np.memmap(temp_agg_games_filename, shape=((number_of_samples,) + games[0].shape[1:]), dtype=np.float32, mode='w+')
-    equilibria_agg = np.memmap(temp_agg_eq_filename, shape=((number_of_samples,) + equilibria[0].shape[1:]), dtype=np.float32, mode='w+')
-
-    start_index = 0
-    for processCounter in range(cpu_cores):
-        n_samples = games[processCounter].shape[0]
-        games_agg[start_index: start_index + n_samples] = games[0]
-        equilibria_agg[start_index: start_index + n_samples] = equilibria[0]
-        start_index += n_samples
+    games = np.vstack(games)
+    equilibria = np.vstack(equilibria)
 
     # Save the generated arrays on the local drive
     np.save("./Datasets/" + games_dataset_name, games)
     np.save("./Datasets/" + equilibria_dataset_name, equilibria)
-
-    # Delete the memory mapped arrays
-    del games_agg
-    del equilibria_agg
-    gc.collect()
-    os.remove(temp_agg_games_filename)
-    os.remove(temp_agg_eq_filename)
 
 
 # ************************
