@@ -357,7 +357,7 @@ def lossFunction_payoff_Eq_weightedSum(game, payoff_Eq_function, payoffToEq_weig
                                                           computePayoff_function, num_players)
 
         # Compute the loss, average over the batch, and return
-        return K.mean(loss_Eq_MSE + payoffToEq_weight * loss_payoff_MSE)
+        return K.mean(loss_Eq_MSE + payoffToEq_weight * loss_payoff_MSE) / (1 + payoffToEq_weight)
 
     return payoff_Eq_weightedSum
 
@@ -609,10 +609,10 @@ def build_hydra_model(num_players, pure_strategies_per_player, max_equilibria, o
 
     # Decide the layer sizes
     if hydra_shape == 'bull_necked':
-        common_layer_sizes = [200, 600, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 400, 400, 400, 200, 200, 200, 200,
-                              100]
-        head_layer_sizes = []
+        common_layer_sizes = [200, 600, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 400, 400, 400]
+        head_layer_sizes = [200]
     elif hydra_shape == 'sawfish':
+        # common_layer_sizes = [200, 600, 1000, 1000, 1000, 1000, 1000, 400, 400, 400]
         common_layer_sizes = [200, 600, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 400, 400, 400]
         head_layer_sizes = [200]
     else:
