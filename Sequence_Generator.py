@@ -1,7 +1,6 @@
 import numpy as np
 import math
 import os
-import tensorflow as tf
 from tensorflow.keras.utils import Sequence
 
 class NashSequence(Sequence):
