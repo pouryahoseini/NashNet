@@ -4,6 +4,30 @@ import os
 from tensorflow.keras.utils import Sequence
 from NashNet_utils import unisonShuffle
 
+'''
+ Specifications for NashSequence:
+    NashSequence, inheriting from sequence, is designed to feed a dataset into a tf.keras sequential model
+    
+__init__(
+    file_list - List of game and equilibria tuples in the following form:
+        [ (G1, E1), (G2, E2) ... (G**, E**)]
+        Each pair of games / equilibria is assumed to be correct.
+        Should contain the relative path from *NashNet Dir* 
+            ex: ./Datasets/2P/2x2/Formatted_Data/
+    max_equilibria - int >0
+        Maximum number of equilibria to keep. Based on number of heads the hydra model contains
+        Also checks that the equlibria files provided are valid
+    normalize_input_data - Bool, whether or not to normalize input data
+    batch_size - int >0, The number of samples to feed in each batch
+
+    The sequence requires that __init__, __len__, and __getitem__ are defined.
+    Additionally, on_epoch_end may be defined, and is called at the end of every epoch
+    
+    __len__ returns the number of batches that will be provided
+    __getitem__ returns the loaded data
+    on_epoch_end re-shuffles the indices list, and resets counters   
+'''
+
 class NashSequence(Sequence):
     def __init__(self, directory, test_split, max_equilibria, normalize_input_data, batch_size=500000, file_len=5000):
         # Check to make sure things work

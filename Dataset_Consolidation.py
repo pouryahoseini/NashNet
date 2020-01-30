@@ -115,10 +115,11 @@ def split_games(path, size=5000):
             acc_ctr += 1
 
 # split_games("/mnt/Data/NashNet/meh/2P/2x2/")
-target_dir = "/mnt/Data/NashNet/ASDFAFeedas/"
-move_data_to_folder(dataset_path=target_dir)
+# target_dir = "/mnt/Data/NashNet/ASDFAFeedas/"
+# move_data_to_folder(dataset_path=target_dir)
 # for folder in os.listdir(target_dir):
 
+print(os.path.abspath("./Test"))
 
     
 
