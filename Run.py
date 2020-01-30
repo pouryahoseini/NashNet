@@ -1,4 +1,3 @@
-from Dataset_Consolidation import *
 from NashNet import NashNet
 
 # Build a network instance

@@ -523,8 +523,9 @@ def hydra_oneSided_payoffv2_Eq_MSE(nashEq_proposer, nashEq_proposed, game, pureS
 
 
 # ********************************
-def build_model(num_players, pure_strategies_per_player, max_equilibria, optimizer, lossType, payoffLoss_type,
-                enable_batchNormalization, payoffToEq_weight=None, compute_epsilon=False):
+def build_monohead_model(num_players, pure_strategies_per_player, max_equilibria, optimizer, lossType, payoffLoss_type,
+                monohead_common_layer_sizes, monohead_layer_sizes_per_player, enable_batchNormalization,
+                payoffToEq_weight=None, compute_epsilon=False):
     """
     Function to create the neural network model of NashNet. It returns the model.
     """
@@ -537,7 +538,7 @@ def build_model(num_players, pure_strategies_per_player, max_equilibria, optimiz
     flattened_input = tf.keras.layers.Flatten()(input_layer)
 
     # Build dense layers
-    layer_sizes = [200, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 200, 100]
+    layer_sizes = monohead_common_layer_sizes
     current_layer = flattened_input
     for size in layer_sizes:
         if enable_batchNormalization:
@@ -549,7 +550,7 @@ def build_model(num_players, pure_strategies_per_player, max_equilibria, optimiz
     final_dense = current_layer
 
     # Create output for each player
-    layer_sizes_per_player = [50, 50, 30]
+    layer_sizes_per_player = monohead_layer_sizes_per_player
     last_layer_player = []
     for _ in range(num_players):
         current_layer = tf.keras.layers.Dense(layer_sizes_per_player[0], activation='relu')(final_dense)
@@ -595,7 +596,9 @@ def build_model(num_players, pure_strategies_per_player, max_equilibria, optimiz
 
 # ********************************
 def build_hydra_model(num_players, pure_strategies_per_player, max_equilibria, optimizer, lossType, payoffLoss_type,
-                      enable_batchNormalization, hydra_shape, payoffToEq_weight=None, compute_epsilon=False):
+                      sawfish_common_layer_sizes, bull_necked_common_layer_sizes, sawfish_head_layer_sizes,
+                      bull_necked_head_layer_sizes, hydra_layer_sizes_per_player, enable_batchNormalization,
+                      hydra_shape, payoffToEq_weight=None, compute_epsilon=False):
     """
     Function to create the hydra neural network model of NashNet. It returns the model.
     """
@@ -609,12 +612,11 @@ def build_hydra_model(num_players, pure_strategies_per_player, max_equilibria, o
 
     # Decide the layer sizes
     if hydra_shape == 'bull_necked':
-        common_layer_sizes = [200, 600, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 400, 400, 400]
-        head_layer_sizes = [200]
+        common_layer_sizes = bull_necked_common_layer_sizes
+        head_layer_sizes = bull_necked_head_layer_sizes
     elif hydra_shape == 'sawfish':
-        # common_layer_sizes = [200, 600, 1000, 1000, 1000, 1000, 1000, 400, 400, 400]
-        common_layer_sizes = [200, 600, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 400, 400, 400]
-        head_layer_sizes = [200]
+        common_layer_sizes = sawfish_common_layer_sizes
+        head_layer_sizes = sawfish_head_layer_sizes
     else:
         raise Exception('\nThe hydra_shape is not valid.\n')
 
@@ -643,7 +645,7 @@ def build_hydra_model(num_players, pure_strategies_per_player, max_equilibria, o
         final_dense[headCounter] = current_layer
 
     # Create output for each player and each head
-    layer_sizes_per_player = [200, 200, 120]
+    layer_sizes_per_player = hydra_layer_sizes_per_player
     last_layer_player = [None] * max_equilibria
     for headCounter in range(max_equilibria):
         last_layer_player[headCounter] = []

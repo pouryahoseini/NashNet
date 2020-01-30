@@ -2,6 +2,7 @@ import os, configparser, ast
 import tensorflow as tf
 import tensorflow.keras as keras
 import numpy as np
+from Dataset_Consolidation import *
 from NashNet_utils import *
 import logging
 
@@ -32,19 +33,21 @@ class NashNet:
 
         # Build the neural network model
         if not self.cfg["enable_hydra"]:
-            self.model = build_model(num_players=self.cfg["num_players"],
-                                     pure_strategies_per_player=self.cfg["num_strategies"],
-                                     max_equilibria=self.cfg["max_equilibria"],
-                                     optimizer=tf.keras.optimizers.SGD(
-                                         learning_rate=self.cfg["initial_learning_rate"],
-                                         momentum=self.cfg["momentum"],
-                                         nesterov=self.cfg["nesterov"]),
-                                     lossType=self.cfg["loss_type"],
-                                     payoffLoss_type=self.cfg["payoff_loss_type"],
-                                     enable_batchNormalization=self.cfg["batch_normalization"],
-                                     payoffToEq_weight=self.cfg["payoff_to_equilibrium_weight"],
-                                     compute_epsilon=self.cfg["compute_epsilon"]
-                                     )
+            self.model = build_monohead_model(num_players=self.cfg["num_players"],
+                                              pure_strategies_per_player=self.cfg["num_strategies"],
+                                              max_equilibria=self.cfg["max_equilibria"],
+                                              optimizer=tf.keras.optimizers.SGD(
+                                                  learning_rate=self.cfg["initial_learning_rate"],
+                                                  momentum=self.cfg["momentum"],
+                                                  nesterov=self.cfg["nesterov"]),
+                                              lossType=self.cfg["loss_type"],
+                                              payoffLoss_type=self.cfg["payoff_loss_type"],
+                                              monohead_common_layer_sizes=self.cfg["monohead_common_layer_sizes"],
+                                              monohead_layer_sizes_per_player=self.cfg["monohead_layer_sizes_per_player"],
+                                              enable_batchNormalization=self.cfg["batch_normalization"],
+                                              payoffToEq_weight=self.cfg["payoff_to_equilibrium_weight"],
+                                              compute_epsilon=self.cfg["compute_epsilon"]
+                                              )
         else:
             self.model = build_hydra_model(num_players=self.cfg["num_players"],
                                            pure_strategies_per_player=self.cfg["num_strategies"],
@@ -55,6 +58,11 @@ class NashNet:
                                                nesterov=self.cfg["nesterov"]),
                                            lossType=self.cfg["loss_type"],
                                            payoffLoss_type=self.cfg["payoff_loss_type"],
+                                           sawfish_common_layer_sizes=self.cfg["sawfish_common_layer_sizes"],
+                                           bull_necked_common_layer_sizes=self.cfg["bull_necked_common_layer_sizes"],
+                                           sawfish_head_layer_sizes=self.cfg["sawfish_head_layer_sizes"],
+                                           bull_necked_head_layer_sizes=self.cfg["bull_necked_head_layer_sizes"],
+                                           hydra_layer_sizes_per_player=self.cfg["hydra_layer_sizes_per_player"],
                                            enable_batchNormalization=self.cfg["batch_normalization"],
                                            hydra_shape=self.cfg["hydra_physique"],
                                            payoffToEq_weight=self.cfg["payoff_to_equilibrium_weight"],
@@ -77,11 +85,15 @@ class NashNet:
         """
 
         # Load the training data
-        training_games, training_equilibria, self.test_games, self.test_equilibria = self.load_datasets()
+        # training_games, training_equilibria, self.test_games, self.test_equilibria = self.load_datasets()
 
-        # Write the test data
+        # Decide on the training, validation, and test data lists of files
+
+
+        # Write the test data list
         if self.cfg["rewrite_saved_test_data_if_model_weights_given"] or (not self.weights_initialized):
-            saveTestData(self.test_games, self.test_equilibria, self.cfg["num_players"], self.cfg["num_strategies"])
+            ;;;;
+            # saveTestData(self.test_games, self.test_equilibria, self.cfg["num_players"], self.cfg["num_strategies"])
 
         # Print the summary of the model
         print(self.model.summary())
@@ -105,15 +117,14 @@ class NashNet:
             callbacks_list += [EpsilonCallback()]
 
         # Train the model
-        trainingHistory = self.model.fit_generator(training_games, training_equilibria,
-                                                   validation_split=self.cfg["validation_split"],
-                                                   epochs=self.cfg["epochs"],
-                                                   batch_size=self.cfg["batch_size"],
-                                                   shuffle=True,
-                                                   callbacks=callbacks_list,
-                                                   use_multiprocessing=True,
-                                                   workers=6
-                                                   )
+        trainingHistory = self.model.fit(NashSequence(),
+                                         validation_data=NashSequence(),
+                                         epochs=self.cfg["epochs"],
+                                         shuffle='batch',
+                                         callbacks=callbacks_list,
+                                         use_multiprocessing=True,
+                                         workers=8
+                                         )
 
         # Save the model
         saveModel(self.model, self.cfg["model_architecture_file"], self.cfg["model_weights_file"])
@@ -141,10 +152,11 @@ class NashNet:
 
         # Load test data if not already created
         if not (self.test_games.size and self.test_equilibria.size):
-            self.test_games, self.test_equilibria = loadTestData(self.cfg["test_games_file"],
-                                                                 self.cfg["test_equilibria_file"],
-                                                                 self.cfg["max_equilibria"], self.cfg["num_players"],
-                                                                 self.cfg["num_strategies"])
+            self.test_data_generator = NashSequence()
+            # self.test_games, self.test_equilibria = loadTestData(self.cfg["test_games_file"],
+            #                                                      self.cfg["test_equilibria_file"],
+            #                                                      self.cfg["max_equilibria"], self.cfg["num_players"],
+            #                                                      self.cfg["num_strategies"])
 
         # Create the list of callbacks
         callbacks_list = []
@@ -153,7 +165,8 @@ class NashNet:
             callbacks_list += [epsilon_callback]
 
         # Test the trained model
-        evaluationResults = self.model.evaluate(self.test_games, self.test_equilibria, batch_size=self.cfg["test_batch_size"], callbacks=callbacks_list)
+        evaluationResults = self.model.evaluate(self.test_data_generator,
+                                                callbacks=callbacks_list)
 
         # Print max epsilon
         if self.cfg["compute_epsilon"]:
@@ -356,6 +369,13 @@ class NashNet:
         self.cfg["test_batch_size"] = config_parser.getint(configSection, "test_batch_size")
         self.cfg["commutativity_test_permutations"] = config_parser.getint(configSection, "commutativity_test_permutations")
         self.cfg["rewrite_saved_test_data_if_model_weights_given"] = config_parser.get(configSection, "rewrite_saved_test_data_if_model_weights_given")
+        self.cfg['sawfish_common_layer_sizes'] = ast.literal_eval(config_parser.get(configSection, "sawfish_common_layer_sizes"))
+        self.cfg['bull_necked_common_layer_sizes'] = ast.literal_eval(config_parser.get(configSection, "bull_necked_common_layer_sizes"))
+        self.cfg['monohead_common_layer_sizes'] = ast.literal_eval(config_parser.get(configSection, "monohead_common_layer_sizes"))
+        self.cfg['sawfish_head_layer_sizes'] = ast.literal_eval(config_parser.get(configSection, "sawfish_head_layer_sizes"))
+        self.cfg['bull_necked_head_layer_sizes'] = ast.literal_eval(config_parser.get(configSection, "bull_necked_head_layer_sizes"))
+        self.cfg['hydra_layer_sizes_per_player'] = ast.literal_eval(config_parser.get(configSection, "hydra_layer_sizes_per_player"))
+        self.cfg['monohead_layer_sizes_per_player'] = ast.literal_eval(config_parser.get(configSection, "monohead_layer_sizes_per_player"))
 
         # Check input configurations
         if not (0 < self.cfg["validation_split"] < 1):
