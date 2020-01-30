@@ -28,7 +28,7 @@ __init__(
     on_epoch_end re-shuffles the indices list, and resets counters   
 '''
 
-class NashSequence(Sequence):
+class NashSeaquence(Sequence):
     def __init__(self, directory, test_split, max_equilibria, normalize_input_data, batch_size=500000, file_len=5000):
         # Check to make sure things work
         assert batch_size % file_len == 0
