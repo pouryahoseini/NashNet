@@ -42,12 +42,12 @@ class NashSequence(Sequence):
 
         # Create numpy array to hold x data
         tmp_game = np.load(os.path.join(files_location, self.game_files[0]))
-        game_shape = tmp_game.shape[-3:]
+        game_shape = tmp_game.shape[1:]
         self.x = np.zeros((batch_size,) + game_shape)
 
         # Create numpy array to hold y data
         tmp_eq = np.load(os.path.join(files_location, self.equilibria_files[0]))
-        eq_shape = tmp_eq.shape[-3:]
+        eq_shape = tmp_eq.shape[1:]
         self.y = np.zeros((batch_size,) + eq_shape)
 
         # Check to make sure that each file is the SAME DAMN SIZE
