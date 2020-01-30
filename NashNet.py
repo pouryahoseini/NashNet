@@ -89,6 +89,9 @@ class NashNet:
         # Load the training data
         # training_games, training_equilibria, self.test_games, self.test_equilibria = self.load_datasets()
 
+        # Find the address to the dataset
+        dataset_location = self.dataset_address()
+
         # Decide on the training, validation, and test data lists of files
         if self.cfg["rewrite_saved_test_data_if_model_weights_given"] or (not self.weights_initialized):
             training_files, validation_files, self.test_files = self.list_files(num_players=self.cfg["num_players"],
@@ -125,10 +128,12 @@ class NashNet:
 
         # Train the model
         trainingHistory = self.model.fit(NashSequence(files_list=training_files,
+                                                      files_location=dataset_location+'Formatted_Data/',
                                                       max_equilibria=self.cfg["max_equilibria"],
                                                       normalize_input_data=self.cfg["normalize_input_data"],
                                                       batch_size=self.cfg["test_batch_size"]),
                                          validation_data=NashSequence(files_list=validation_files,
+                                                                      files_location=dataset_location+'Formatted_Data/',
                                                                       max_equilibria=self.cfg["max_equilibria"],
                                                                       normalize_input_data=self.cfg["normalize_input_data"],
                                                                       batch_size=self.cfg["test_batch_size"]),

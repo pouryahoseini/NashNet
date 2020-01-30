@@ -29,7 +29,7 @@ __init__(
 '''
 
 class NashSequence(Sequence):
-    def __init__(self, files_list, max_equilibria, normalize_input_data, batch_size=64):
+    def __init__(self, files_list, files_location, max_equilibria, normalize_input_data, batch_size=64):
         # Get files, then sort them to ensure they match up
         self.game_files = [x[0] for x in files_list]
         self.equilibria_files = [x[1] for x in files_list]
@@ -38,14 +38,15 @@ class NashSequence(Sequence):
         self.batch_size = batch_size
         self.max_equilibria = max_equilibria
         self.normalize_input_data = normalize_input_data
+        self.files_location = files_location
 
         # Create numpy array to hold x data
-        tmp_game = np.load(self.game_files[0])
+        tmp_game = np.load(os.path.join(files_location, self.game_files[0]))
         game_shape = tmp_game.shape[-3:]
         self.x = np.zeros((batch_size,) + game_shape)
 
         # Create numpy array to hold y data
-        tmp_eq = np.load(self.equilibria_files[0])
+        tmp_eq = np.load(os.path.join(files_location, self.equilibria_files[0]))
         eq_shape = tmp_eq.shape[-3:]
         self.y = np.zeros((batch_size,) + eq_shape)
 
@@ -62,7 +63,7 @@ class NashSequence(Sequence):
 
         self.num_samples = 0
         for gf in self.game_files:
-            g = np.load(gf)
+            g = np.load(os.path.join(files_location, gf))
             # Check shape
             if g.shape[0] != self.file_len:
                 errmsg = "All data files must be the same size!\n\
@@ -91,8 +92,8 @@ class NashSequence(Sequence):
         upper=(batch_num+1) * self.batch_size % self.file_len
 
         # Load samples from f1 - This will always be done.
-        g = np.load(self.game_files[f1_idx])
-        e = np.load(self.equilibria_files[f1_idx])
+        g = np.load(os.path.join(self.files_location, self.game_files[f1_idx]))
+        e = np.load(os.path.join(self.files_location, self.equilibria_files[f1_idx]))
 
         # If lower > upper, then two files needed
         if lower > upper:
@@ -111,8 +112,8 @@ class NashSequence(Sequence):
                 self.y[0:remainder] = e[lower:]
 
                 # Load f2
-                g = np.load(self.game_files[f1_idx])
-                e = np.load(self.equilibria_files[f1_idx])
+                g = np.load(os.path.join(self.files_location, self.game_files[f1_idx]))
+                e = np.load(os.path.join(self.files_location, self.equilibria_files[f1_idx]))
 
                 # Assign the rest of the values to x and y
                 self.x[remainder:self.batch_size] = g[0:remainder]
