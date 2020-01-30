@@ -2,6 +2,7 @@ import os, configparser, ast
 import tensorflow as tf
 import tensorflow.keras as keras
 import numpy as np
+import pickle
 from Sequence_Generator import *
 from NashNet_utils import *
 import logging
@@ -22,7 +23,8 @@ class NashNet:
 
         # Initialize variables
         self.trained_model_loaded = False
-        self.test_games = self.test_equilibria = np.array([])
+        # self.test_games = self.test_equilibria = np.array([])
+        self.test_files = None
 
         # Set Tensorflow's verbosity
         os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'  # WARN
@@ -89,14 +91,16 @@ class NashNet:
 
         # Decide on the training, validation, and test data lists of files
 
-
         # Write the test data list
         if self.cfg["rewrite_saved_test_data_if_model_weights_given"] or (not self.weights_initialized):
             training_files, validation_files, self.test_files = self.list_files(num_players=self.cfg["num_players"],
                                                                            num_strategies=self.cfg["num_strategies"],
                                                                            validation_split=self.cfg["validation_split"],
                                                                            test_split=self.cfg["test_split"])
-            # saveTestData(self.test_games, self.test_equilibria, self.cfg["num_players"], self.cfg["num_strategies"])
+
+        # Save the list of test files
+        self.save_test_files_list(self.test_files, self.cfg["num_players"], self.cfg["num_strategies"])
+        # saveTestData(self.test_games, self.test_equilibria, self.cfg["num_players"], self.cfg["num_strategies"])
 
         # Print the summary of the model
         print(self.model.summary())
@@ -160,8 +164,14 @@ class NashNet:
             num_to_print = self.cfg["examples_to_print"]
 
         # Load test data if not already created
-        if not (self.test_games.size and self.test_equilibria.size):
-            self.test_data_generator = NashSequence()
+        if not self.test_files:
+            self.test_files = self.load_test_files_list(self.cfg["num_players"], self.cfg["num_strategies"])
+            self.test_data_generator = NashSequence(files_list=self.test_files,
+                                                    max_equilibria=self.cfg["max_equilibria"],
+                                                    normalize_input_data=self.cfg["normalize_input_data"],
+                                                    batch_size=self.cfg["test_batch_size"])
+
+        # if not (self.test_games.size and self.test_equilibria.size):
             # self.test_games, self.test_equilibria = loadTestData(self.cfg["test_games_file"],
             #                                                      self.cfg["test_equilibria_file"],
             #                                                      self.cfg["max_equilibria"], self.cfg["num_players"],
@@ -318,6 +328,40 @@ class NashNet:
         return training_games, training_equilibria, test_games, test_equilibria
 
     # ******
+    def save_test_files_list(self, test_files, num_players, num_strategies):
+        """
+        Function to save the list of test files in a pickle file
+        """
+
+        # Set the address to load the file
+        address = './Datasets/' + str(num_players) + 'P/' + str(num_strategies[0])
+        for strategy in num_strategies[1:]:
+            address += 'x' + str(strategy)
+        address += '/'
+
+        # Save the file
+        with open(address + 'test_files.pickle', 'wb') as list_file:
+            pickle.dump(test_files, list_file)
+
+    # ******
+    def load_test_files_list(self, num_players, num_strategies):
+        """
+        Function to load the list of test files from a pickle file
+        """
+
+        # Set the address to load the file
+        address = './Datasets/' + str(num_players) + 'P/' + str(num_strategies[0])
+        for strategy in num_strategies[1:]:
+            address += 'x' + str(strategy)
+        address += '/'
+
+        # Load the file
+        with open(address + 'test_files.pickle', 'rb') as list_file:
+            test_files = pickle.load(list_file)
+
+        return test_files
+
+    # ******
     def list_files(self, num_players, num_strategies, validation_split, test_split):
         """
         Function to list the file names for training, testing, and evaluating with the format
@@ -325,7 +369,7 @@ class NashNet:
         """
 
         # Find the address to the files
-        address = os.listdir('./Datasets/' + str(num_players) + 'P/' + str(num_strategies[0]))
+        address = './Datasets/' + str(num_players) + 'P/' + str(num_strategies[0])
         for strategy in num_strategies[1:]:
             address += 'x' + str(strategy)
         address += '/Formatted_Data/'
