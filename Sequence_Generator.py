@@ -29,22 +29,13 @@ __init__(
 '''
 
 class NashSequence(Sequence):
-    def __init__(self, directory, test_split, max_equilibria, normalize_input_data, batch_size=500000, file_len=5000):
-        # Check to make sure things work
-        assert batch_size % file_len == 0
-        assert file_len == 5000
-
+    def __init__(self, files_list, max_equilibria, normalize_input_data, batch_size=64):
         # Get files, then sort them to ensure they match up
-        files = os.listdir(directory)
-        self.directory = directory
-        self.equilibria_files = [self.directory + x for x in files if "Equilibria" in x]
-        self.game_files = [self.directory + x for x in files if "Games" in x]
-        self.equilibria_files.sort()
-        self.game_files.sort()
+        self.game_files = [x[0] for x in files_list]
+        self.equilibria_files = [x[1] for x in files_list]
 
         # Do batch size
         self.batch_size = batch_size
-        self.file_len = file_len
         self.max_equilibria = max_equilibria
         self.normalize_input_data = normalize_input_data
 
@@ -58,24 +49,79 @@ class NashSequence(Sequence):
         eq_shape = tmp_eq.shape[-3:]
         self.y = np.zeros((batch_size,) + eq_shape)
 
-        # Create randomized array of indices to... randomize the order things are fed into the model
-        self.training_files_no = int(len(self.game_files) * (1 - test_split))
-        self.indices = np.arange(self.training_files_no)
+        # Check to make sure that each file is the SAME DAMN SIZE
+        #   this is necessary in order to make this shit properly threadsafe
+        #   so that we can use multiple workers to prefetch batches faster
+        #   Makes the tiny-ass batch size such a bit less
+        self.file_len = tmp_game.shape[0]
 
-        # Var to track how many games have been fed into the model
-        self.samples_fed = 0
+        # NOTE! Currently, a batch cannot span over more than two files.
+        # This means batch size CANNOT be greater than the file len
+        if self.batch_size > self.file_len:
+            raise ValueError("Err: Batch size cannot be greater than number of samples in a single file!")
 
+        self.num_samples = 0
+        for gf in self.game_files:
+            g = np.load(gf)
+            # Check shape
+            if g.shape[0] != self.file_len:
+                errmsg = "All data files must be the same size!\n\
+                           \tFile " + gf + " has shape " + str(g.shape) + \
+                          "\twhile file " + self.game_files[0] + " has shape " + str(game_shape) + "!"
+                raise ValueError(errmsg)
+
+            # Accumulate
+            self.num_samples += self.num_samples + g.shape[0]
+
+        # Create array of indices to randomize the order things are fed into the model
+        self.num_training_files = len(self.game_files)
+        self.indices = np.arange(self.num_training_files)
+        np.random.shuffle(self.indices)
+
+    # Gets number of batches
     def __len__(self):
-        return int(math.floor(self.training_files_no * self.file_len / self.batch_size))
+        return int(math.ceil(self.num_samples / self.batch_size))
 
-    def __getitem__(self, idx):
-        for i in range(int(self.batch_size / self.file_len)):
-            # Load the game and Equ
-            g = np.load(self.directory + self.game_files[self.indices[self.samples_fed]])
-            e = np.load(self.directory + self.equilibria_files[self.indices[self.samples_fed]])
-            self.x[i*self.file_len:(i+1)*self.file_len] = g
-            self.y[i * self.file_len:(i + 1) * self.file_len] = e
-            self.samples_fed += 1
+    # Gets the batch, specified by batch_num
+    def __getitem__(self, batch_num):
+        # 2 Cases - Data is all in one file, or data is split over two files
+        #   1st file is found by using the formula f1_idx = int(batch_num*self.batch_size/self.file_len)
+        f1_idx = int(batch_num*self.batch_size/self.file_len)
+        lower=batch_num * self.batch_size % self.file_len
+        upper=(batch_num+1) * self.batch_size % self.file_len
+
+        # Load samples from f1 - This will always be done.
+        g = np.load(self.game_files[f1_idx])
+        e = np.load(self.equilibria_files[f1_idx])
+
+        # If lower > upper, then two files needed
+        if lower > upper:
+            remainder = self.file_len - lower
+            f2_idx = f1_idx+1
+
+            # If f2_idx >= self.num_training_files, then the end has been reached, and this is a special case
+            if f2_idx >= self.num_training_files:
+                self.x = np.copy(g[lower:])
+                self.y = np.copy(e[lower:])
+
+            # If not, then things are normal
+            else:
+                # Assign stuff from file 1
+                self.x[0:remainder] = g[lower:]
+                self.y[0:remainder] = e[lower:]
+
+                # Load f2
+                g = np.load(self.game_files[f1_idx])
+                e = np.load(self.equilibria_files[f1_idx])
+
+                # Assign the rest of the values to x and y
+                self.x[remainder:self.batch_size] = g[0:remainder]
+                self.y[remainder:self.batch_size] = e[0:remainder]
+
+        # Only one file needed
+        else:
+            self.x[0:self.batch_size] = g[lower:upper]
+            self.y[0:self.batch_size] = e[lower:upper]
 
         # Process samples
         self.x, self.y = self.__process_data(self.x, self.y)
@@ -84,10 +130,6 @@ class NashSequence(Sequence):
 
     def on_epoch_end(self):
         np.random.shuffle(self.indices)
-        self.samples_fed = 0
-
-    def __save_test_data(self):
-        pass
 
     def __process_data(self, sampleGames, sampleEquilibria):
         # Shuffle the dataset arrays
