@@ -2,7 +2,7 @@ import os, configparser, ast
 import tensorflow as tf
 import tensorflow.keras as keras
 import numpy as np
-from Dataset_Consolidation import *
+from Sequence_Generator import *
 from NashNet_utils import *
 import logging
 
@@ -92,7 +92,10 @@ class NashNet:
 
         # Write the test data list
         if self.cfg["rewrite_saved_test_data_if_model_weights_given"] or (not self.weights_initialized):
-            ;;;;
+            training_files, validation_files, self.test_files = self.list_files(num_players=self.cfg["num_players"],
+                                                                           num_strategies=self.cfg["num_strategies"],
+                                                                           validation_split=self.cfg["validation_split"],
+                                                                           test_split=self.cfg["test_split"])
             # saveTestData(self.test_games, self.test_equilibria, self.cfg["num_players"], self.cfg["num_strategies"])
 
         # Print the summary of the model
@@ -117,8 +120,14 @@ class NashNet:
             callbacks_list += [EpsilonCallback()]
 
         # Train the model
-        trainingHistory = self.model.fit(NashSequence(),
-                                         validation_data=NashSequence(),
+        trainingHistory = self.model.fit(NashSequence(files_list=training_files,
+                                                      max_equilibria=self.cfg["max_equilibria"],
+                                                      normalize_input_data=self.cfg["normalize_input_data"],
+                                                      batch_size=self.cfg["test_batch_size"]),
+                                         validation_data=NashSequence(files_list=validation_files,
+                                                                      max_equilibria=self.cfg["max_equilibria"],
+                                                                      normalize_input_data=self.cfg["normalize_input_data"],
+                                                                      batch_size=self.cfg["test_batch_size"]),
                                          epochs=self.cfg["epochs"],
                                          shuffle='batch',
                                          callbacks=callbacks_list,
@@ -307,6 +316,46 @@ class NashNet:
         test_equilibria = sampleEquilibria[trainingSamples_no: sample_no]
 
         return training_games, training_equilibria, test_games, test_equilibria
+
+    # ******
+    def list_files(self, num_players, num_strategies, validation_split, test_split):
+        """
+        Function to list the file names for training, testing, and evaluating with the format
+        [(G1, E1), (G2, E2) ... (G**, E**)]
+        """
+
+        # Find the address to the files
+        address = os.listdir('./Datasets/' + str(num_players) + 'P/' + str(num_strategies[0]))
+        for strategy in num_strategies[1:]:
+            address += 'x' + str(strategy)
+        address += '/Formatted_Data/'
+
+        # List the files in the directory
+        list_of_files = os.listdir(address)
+
+        # Extract the list of training files
+        equilibrium_files = [file for file in list_of_files if "Equilibria" in file]
+        game_files = [file for file in list_of_files if "Games" in file]
+
+        # Check if the entries in the list of equilibria and games are corresponding to each other
+        assert len(game_files) == len(equilibrium_files), 'The number of game and equilibrium files are not equal in ' + address
+        for file_no, file in enumerate(game_files):
+            assert file.lstrip('Games_') == equilibrium_files[file_no].lstrip('Equilibria_'), \
+                'The equilibrium and game files in the directory ' + address + ' are not matching.\nMismatched file: ' + file
+
+        # Sort the files
+        game_files, equilibrium_files = unisonShuffle(game_files, equilibrium_files)
+
+        # Set the starting index of validation and test files
+        test_index = int(math.floor(len(game_files) * (1 - test_split)))
+        validation_index = int(math.floor(test_index * (1 - validation_split)))
+
+        # Create the final list of test, training, and validation files
+        training_files = [(game_file, equilibrium_file) for (game_file, equilibrium_file) in zip(game_files[: validation_index], equilibrium_files[: validation_index])]
+        validation_files = [(game_file, equilibrium_file) for (game_file, equilibrium_file) in zip(game_files[validation_index: test_index], equilibrium_files[validation_index: test_index])]
+        test_files = [(game_file, equilibrium_file) for (game_file, equilibrium_file) in zip(game_files[test_index:], equilibrium_files[test_index:])]
+
+        return training_files, validation_files, test_files
 
     # ******
     def load_config(self, configFile, configSection="DEFAULT"):
