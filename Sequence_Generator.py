@@ -54,6 +54,12 @@ class NashSequence(Sequence):
         #   so that we can use multiple workers to prefetch batches faster
         #   Makes the tiny-ass batch size such a bit less
         self.file_len = tmp_game.shape[0]
+
+        # NOTE! Currently, a batch cannot span over more than two files.
+        # This means batch size CANNOT be greater than the file len
+        if self.batch_size > self.file_len:
+            raise ValueError("Err: Batch size cannot be greater than number of samples in a single file!")
+
         self.num_samples = 0
         for gf in self.game_files:
             g = np.load(gf)
