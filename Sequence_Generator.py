@@ -2,9 +2,10 @@ import numpy as np
 import math
 import os
 from tensorflow.keras.utils import Sequence
+from NashNet_utils import unisonShuffle
 
 class NashSequence(Sequence):
-    def __init__(self, directory, batch_size=500000, file_len=5000):
+    def __init__(self, directory, test_split, max_equilibria, normalize_input_data, batch_size=500000, file_len=5000):
         # Check to make sure things work
         assert batch_size % file_len == 0
         assert file_len == 5000
@@ -20,6 +21,8 @@ class NashSequence(Sequence):
         # Do batch size
         self.batch_size = batch_size
         self.file_len = file_len
+        self.max_equilibria = max_equilibria
+        self.normalize_input_data = normalize_input_data
 
         # Create numpy array to hold x data
         tmp_game = np.load(self.game_files[0])
@@ -32,13 +35,14 @@ class NashSequence(Sequence):
         self.y = np.zeros((batch_size,) + eq_shape)
 
         # Create randomized array of indices to... randomize the order things are fed into the model
-        self.indices = np.arange(len(self.game_files))
+        self.training_files_no = int(len(self.game_files) * (1 - test_split))
+        self.indices = np.arange(self.training_files_no)
 
         # Var to track how many games have been fed into the model
         self.samples_fed = 0
 
     def __len__(self):
-        return math.ceil(len(self.game_files) * self.file_len / self.batch_size)
+        return int(math.floor(self.training_files_no * self.file_len / self.batch_size))
 
     def __getitem__(self, idx):
         for i in range(int(self.batch_size / self.file_len)):
@@ -48,10 +52,38 @@ class NashSequence(Sequence):
             self.x[i*self.file_len:(i+1)*self.file_len] = g
             self.y[i * self.file_len:(i + 1) * self.file_len] = e
             self.samples_fed += 1
+
+        # Process samples
+        self.x, self.y = self.__process_data(self.x, self.y)
+
         return self.x, self.y
 
     def on_epoch_end(self):
         np.random.shuffle(self.indices)
         self.samples_fed = 0
+
+    def __save_test_data(self):
+        pass
+
+    def __process_data(self, sampleGames, sampleEquilibria):
+        # Shuffle the dataset arrays
+        sampleGames, sampleEquilibria = unisonShuffle(sampleGames, sampleEquilibria)
+
+        # Limit the number of true equilibria for each sample game if they are more than max_equilibria
+        if self.max_equilibria < sampleEquilibria.shape[1]:
+            sampleEquilibria = sampleEquilibria[:, 0: self.max_equilibria, :, :]
+        elif self.max_equilibria > sampleEquilibria.shape[1]:
+            raise Exception(
+                '\nmax_equilibria is larger than the number of per sample true equilibria in the provided dataset.\n')
+
+        # Normalize if set to do so
+        if self.normalize_input_data:
+            axes_except_zero = tuple([ax for ax in range(1, len(sampleGames.shape))])
+            scalar_dim_except_zero = (sampleGames.shape[0],) + (1,) * (len(sampleGames.shape) - 1)
+            sampleGames = (sampleGames - np.reshape(np.min(sampleGames, axis=axes_except_zero), scalar_dim_except_zero)) / \
+                          np.reshape(np.max(sampleGames, axis=axes_except_zero) - np.min(sampleGames, axis=axes_except_zero), scalar_dim_except_zero)
+
+        return sampleGames, sampleEquilibria
+
 
 

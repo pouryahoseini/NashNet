@@ -105,13 +105,15 @@ class NashNet:
             callbacks_list += [EpsilonCallback()]
 
         # Train the model
-        trainingHistory = self.model.fit(training_games, training_equilibria,
-                                         validation_split=self.cfg["validation_split"],
-                                         epochs=self.cfg["epochs"],
-                                         batch_size=self.cfg["batch_size"],
-                                         shuffle=True,
-                                         callbacks=callbacks_list
-                                         )
+        trainingHistory = self.model.fit_generator(training_games, training_equilibria,
+                                                   validation_split=self.cfg["validation_split"],
+                                                   epochs=self.cfg["epochs"],
+                                                   batch_size=self.cfg["batch_size"],
+                                                   shuffle=True,
+                                                   callbacks=callbacks_list,
+                                                   use_multiprocessing=True,
+                                                   workers=6
+                                                   )
 
         # Save the model
         saveModel(self.model, self.cfg["model_architecture_file"], self.cfg["model_weights_file"])
