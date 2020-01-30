@@ -23,8 +23,7 @@ class NashNet:
 
         # Initialize variables
         self.trained_model_loaded = False
-        # self.test_games = self.test_equilibria = np.array([])
-        self.test_files = None
+        self.test_games = self.test_equilibria = np.array([])
 
         # Set Tensorflow's verbosity
         os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'  # WARN
@@ -90,17 +89,17 @@ class NashNet:
         # training_games, training_equilibria, self.test_games, self.test_equilibria = self.load_datasets()
 
         # Decide on the training, validation, and test data lists of files
-
-        # Write the test data list
         if self.cfg["rewrite_saved_test_data_if_model_weights_given"] or (not self.weights_initialized):
             training_files, validation_files, self.test_files = self.list_files(num_players=self.cfg["num_players"],
                                                                            num_strategies=self.cfg["num_strategies"],
                                                                            validation_split=self.cfg["validation_split"],
                                                                            test_split=self.cfg["test_split"])
 
+        # Generate the arrays of test data
+        self.test_games, self.test_equilibria = generate_test_data_array(self.test_files)
+
         # Save the list of test files
-        self.save_test_files_list(self.test_files, self.cfg["num_players"], self.cfg["num_strategies"])
-        # saveTestData(self.test_games, self.test_equilibria, self.cfg["num_players"], self.cfg["num_strategies"])
+        saveTestData(self.test_games, self.test_equilibria, self.cfg["num_players"], self.cfg["num_strategies"])
 
         # Print the summary of the model
         print(self.model.summary())
@@ -164,18 +163,11 @@ class NashNet:
             num_to_print = self.cfg["examples_to_print"]
 
         # Load test data if not already created
-        if not self.test_files:
-            self.test_files = self.load_test_files_list(self.cfg["num_players"], self.cfg["num_strategies"])
-            self.test_data_generator = NashSequence(files_list=self.test_files,
-                                                    max_equilibria=self.cfg["max_equilibria"],
-                                                    normalize_input_data=self.cfg["normalize_input_data"],
-                                                    batch_size=self.cfg["test_batch_size"])
-
-        # if not (self.test_games.size and self.test_equilibria.size):
-            # self.test_games, self.test_equilibria = loadTestData(self.cfg["test_games_file"],
-            #                                                      self.cfg["test_equilibria_file"],
-            #                                                      self.cfg["max_equilibria"], self.cfg["num_players"],
-            #                                                      self.cfg["num_strategies"])
+        if not (self.test_games.size and self.test_equilibria.size):
+            self.test_games, self.test_equilibria = loadTestData(self.cfg["test_games_file"],
+                                                                 self.cfg["test_equilibria_file"],
+                                                                 self.cfg["max_equilibria"], self.cfg["num_players"],
+                                                                 self.cfg["num_strategies"])
 
         # Create the list of callbacks
         callbacks_list = []
@@ -184,7 +176,9 @@ class NashNet:
             callbacks_list += [epsilon_callback]
 
         # Test the trained model
-        evaluationResults = self.model.evaluate(self.test_data_generator,
+        evaluationResults = self.model.evaluate(self.test_games,
+                                                self.test_equilibria,
+                                                batch_size=self.cfg['test_batch_size'],
                                                 callbacks=callbacks_list)
 
         # Print max epsilon
@@ -328,38 +322,39 @@ class NashNet:
         return training_games, training_equilibria, test_games, test_equilibria
 
     # ******
-    def save_test_files_list(self, test_files, num_players, num_strategies):
+    def dataset_address(self):
         """
-        Function to save the list of test files in a pickle file
+        Function to get the address to the desired dataset
         """
 
-        # Set the address to load the file
-        address = './Datasets/' + str(num_players) + 'P/' + str(num_strategies[0])
-        for strategy in num_strategies[1:]:
-            address += 'x' + str(strategy)
-        address += '/'
+        dataset_directory = './Datasets/' + str(self.cfg["num_players"]) + 'P/' + str(self.cfg["num_strategies"][0])
+        for strategy in self.cfg["num_strategies"][1:]:
+            dataset_directory += 'x' + str(strategy)
+        dataset_directory += '/'
 
-        # Save the file
-        with open(address + 'test_files.pickle', 'wb') as list_file:
-            pickle.dump(test_files, list_file)
+        return dataset_directory
 
     # ******
-    def load_test_files_list(self, num_players, num_strategies):
+    def generate_test_data_array(self, test_files):
         """
-        Function to load the list of test files from a pickle file
+        Function to generate a numpy array of test data from the list of test files
         """
 
-        # Set the address to load the file
-        address = './Datasets/' + str(num_players) + 'P/' + str(num_strategies[0])
-        for strategy in num_strategies[1:]:
-            address += 'x' + str(strategy)
-        address += '/'
+        # Go to the proper address
+        address = self.dataset_address()
+        address += 'Formatted_Data/'
 
-        # Load the file
-        with open(address + 'test_files.pickle', 'rb') as list_file:
-            test_files = pickle.load(list_file)
+        # Load and concatenate the files
+        test_games = np.load(address + test_files[0][0])
+        test_equilibria = np.load(address + test_files[0][1])
+        for (game_file, eq_file) in test_files:
+            games_temp = np.load(address + game_file)
+            eq_temp = np.load(address + eq_file)
+            test_games = np.append(test_games, games_temp)
+            test_equilibria = np.append(test_equilibria, eq_temp)
 
-        return test_files
+        return test_games, test_equilibria
+
 
     # ******
     def list_files(self, num_players, num_strategies, validation_split, test_split):

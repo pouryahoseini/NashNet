@@ -762,10 +762,10 @@ def saveTestData(testSamples, testEqs, num_players, num_strategies):
     Function to save test data to reuse for evaluation purposes
     """
 
-    address = './Datasets/Test_Data/' + str(num_players) + 'P/' + str(num_strategies[0])
+    address = './Datasets/' + str(num_players) + 'P/' + str(num_strategies[0])
     for strategy in num_strategies[1:]:
         address += 'x' + str(strategy)
-    address += '/'
+    address += '/Test_Data/'
 
     np.save(address + 'Saved_Test_Games.npy', testSamples)
     np.save(address + 'Saved_Test_Equilibria.npy', testEqs)
@@ -777,10 +777,10 @@ def loadTestData(test_games_file, test_equilibria_file, max_equilibria, num_play
     Function to save test data to reuse for evaluation purposes
     """
 
-    address = './Datasets/Test_Data/' + str(num_players) + 'P/' + str(num_strategies[0])
+    address = './Datasets/' + str(num_players) + 'P/' + str(num_strategies[0])
     for strategy in num_strategies[1:]:
         address += 'x' + str(strategy)
-    address += '/'
+    address += '/Test_Data/'
 
     testSamples, testEqs = GetTrainingDataFromNPY(address + test_games_file, address + test_equilibria_file)
 
