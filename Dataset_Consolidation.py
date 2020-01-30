@@ -114,12 +114,8 @@ def split_games(path, size=5000):
             np.save(dest_path+"Equilibria_"+str(acc_ctr)+".npy", e_acc)
             acc_ctr += 1
 
-# split_games("/mnt/Data/NashNet/meh/2P/2x2/")
-# target_dir = "/mnt/Data/NashNet/ASDFAFeedas/"
-# move_data_to_folder(dataset_path=target_dir)
-# for folder in os.listdir(target_dir):
-
-print(os.path.abspath("./Test"))
+move_data_to_folder(dataset_path="/home/pourya/Documents/NashNet/Datasets/2P/2x2/")
+split_games("/home/pourya/Documents/NashNet/Datasets/2P/2x2/2P/2x2/")
 
     
 

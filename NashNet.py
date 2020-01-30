@@ -1,4 +1,5 @@
 import os, configparser, ast
+import random
 import tensorflow as tf
 import tensorflow.keras as keras
 import numpy as np
@@ -96,7 +97,7 @@ class NashNet:
                                                                            test_split=self.cfg["test_split"])
 
         # Generate the arrays of test data
-        self.test_games, self.test_equilibria = generate_test_data_array(self.test_files)
+        self.test_games, self.test_equilibria = self.generate_test_data_array(self.test_files)
 
         # Save the list of test files
         saveTestData(self.test_games, self.test_equilibria, self.cfg["num_players"], self.cfg["num_strategies"])
@@ -364,10 +365,8 @@ class NashNet:
         """
 
         # Find the address to the files
-        address = './Datasets/' + str(num_players) + 'P/' + str(num_strategies[0])
-        for strategy in num_strategies[1:]:
-            address += 'x' + str(strategy)
-        address += '/Formatted_Data/'
+        address = self.dataset_address()
+        address += 'Formatted_Data/'
 
         # List the files in the directory
         list_of_files = os.listdir(address)
@@ -375,6 +374,8 @@ class NashNet:
         # Extract the list of training files
         equilibrium_files = [file for file in list_of_files if "Equilibria" in file]
         game_files = [file for file in list_of_files if "Games" in file]
+        equilibrium_files.sort()
+        game_files.sort()
 
         # Check if the entries in the list of equilibria and games are corresponding to each other
         assert len(game_files) == len(equilibrium_files), 'The number of game and equilibrium files are not equal in ' + address
@@ -382,8 +383,10 @@ class NashNet:
             assert file.lstrip('Games_') == equilibrium_files[file_no].lstrip('Equilibria_'), \
                 'The equilibrium and game files in the directory ' + address + ' are not matching.\nMismatched file: ' + file
 
-        # Sort the files
-        game_files, equilibrium_files = unisonShuffle(game_files, equilibrium_files)
+        # Shuffle the list of files
+        zipped_list = list(zip(game_files, equilibrium_files))
+        random.shuffle(zipped_list)
+        game_files, equilibrium_files = zip(*zipped_list)
 
         # Set the starting index of validation and test files
         test_index = int(math.floor(len(game_files) * (1 - test_split)))
