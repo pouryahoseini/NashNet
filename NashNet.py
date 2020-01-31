@@ -128,12 +128,12 @@ class NashNet:
 
         # Train the model
         seq = NashSequence(files_list=training_files,
-                           files_location=dataset_location + 'Formatted_Data/',
+                           files_location=dataset_location,
                            max_equilibria=self.cfg["max_equilibria"],
                            normalize_input_data=self.cfg["normalize_input_data"],
                            batch_size=self.cfg["batch_size"])
         valid_seq = NashSequence(files_list=validation_files,
-                                 files_location=dataset_location+'Formatted_Data/',
+                                 files_location=dataset_location,
                                  max_equilibria=self.cfg["max_equilibria"],
                                  normalize_input_data=self.cfg["normalize_input_data"],
                                  batch_size=self.cfg["batch_size"])
@@ -340,6 +340,9 @@ class NashNet:
             dataset_directory += 'x' + str(strategy)
         dataset_directory += '/'
 
+        if self.cfg['split_files_folder_name'] != '':
+            dataset_directory += (self.cfg['split_files_folder_name'] + '/')
+
         return dataset_directory
 
     # ******
@@ -350,7 +353,6 @@ class NashNet:
 
         # Go to the proper address
         address = self.dataset_address()
-        address += 'Formatted_Data/'
 
         # Load and concatenate the files
         test_games = np.load(address + test_files[0][0])
@@ -388,7 +390,6 @@ class NashNet:
 
         # Find the address to the files
         address = self.dataset_address()
-        address += 'Formatted_Data/'
 
         # List the files in the directory
         list_of_files = os.listdir(address)
@@ -434,7 +435,6 @@ class NashNet:
         config_parser = configparser.ConfigParser()
 
         # Read the config file
-        # listOfFilesRead = config_parser.read('./Configs/' + configFile)
         listOfFilesRead = config_parser.read(configFile)
 
         # Make sure at least a configuration file was read
@@ -490,6 +490,7 @@ class NashNet:
         self.cfg['bull_necked_head_layer_sizes'] = ast.literal_eval(config_parser.get(configSection, "bull_necked_head_layer_sizes"))
         self.cfg['hydra_layer_sizes_per_player'] = ast.literal_eval(config_parser.get(configSection, "hydra_layer_sizes_per_player"))
         self.cfg['monohead_layer_sizes_per_player'] = ast.literal_eval(config_parser.get(configSection, "monohead_layer_sizes_per_player"))
+        self.cfg['split_files_folder_name'] = config_parser.get(configSection, "split_files_folder_name")
 
         # Check input configurations
         if not (0 < self.cfg["validation_split"] < 1):

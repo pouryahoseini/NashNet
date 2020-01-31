@@ -2,8 +2,9 @@ import shutil
 import os
 import numpy as np
 
+RELATIVE_SPLITTING_ADDRESS = "2P/10x10/"
 ROOT_ADDRESS = "/home/pourya/Documents/NashNet/Datasets/"
-SPLIT_FILES_FOLDER = "/Formatted_Data/"
+SPLIT_FILES_FOLDER = "/Split_Files/"
 ORIGINAL_FILES_FOLDER = "Individual_Games/"
 UNSORTED_FILES_FOLDER = "Unsorted/"
 SPLIT_FILE_SAMPLES = 5000
@@ -18,8 +19,9 @@ def ensure_path_exists(path):
 
 # Moves games from unsorted to their proper folder under Individual_Games
 def move_data_to_folder(dataset_path, delete_duplicates=True):
-    unsorted_path = dataset_path+ UNSORTED_FILES_FOLDER
+    unsorted_path = dataset_path + UNSORTED_FILES_FOLDER
 
+    print('Moving dataset files')
     # Exclude directories
     files = os.listdir(unsorted_path)
 
@@ -28,7 +30,6 @@ def move_data_to_folder(dataset_path, delete_duplicates=True):
         # Get the number of players
         x = f[f.find("_")+1:]
         x = x[:x.find("P")]
-        print(x)
         num_players = int(x)
 
         players_folder = str(num_players)+"P/"
@@ -78,6 +79,7 @@ def combine_games(path, force_regen=False):
     # Get all files
 
 def split_games(path, size=SPLIT_FILE_SAMPLES):
+    print('Splitting the dataset files')
     # Get files and sort them
     full_path = path+ ORIGINAL_FILES_FOLDER
     dest_path = path+ SPLIT_FILES_FOLDER
@@ -121,5 +123,5 @@ def split_games(path, size=SPLIT_FILE_SAMPLES):
             acc_ctr += 1
 
 move_data_to_folder(dataset_path=ROOT_ADDRESS)
-split_games()
+split_games(ROOT_ADDRESS + RELATIVE_SPLITTING_ADDRESS)
 
