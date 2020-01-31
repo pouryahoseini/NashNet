@@ -4,6 +4,7 @@ import tensorflow.keras.backend as K
 import math, random
 import pandas as pd
 from sklearn import cluster
+import os
 
 
 # ********************************
@@ -765,7 +766,12 @@ def saveTestData(testSamples, testEqs, num_players, num_strategies):
     address = './Datasets/' + str(num_players) + 'P/' + str(num_strategies[0])
     for strategy in num_strategies[1:]:
         address += 'x' + str(strategy)
+
+    assert os.path.exists(address), 'The path ' + address + ' does not exist'
+
     address += '/Test_Data/'
+    if not os.path.exists(address):
+        os.mkdir(address)
 
     np.save(address + 'Saved_Test_Games.npy', testSamples)
     np.save(address + 'Saved_Test_Equilibria.npy', testEqs)

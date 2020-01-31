@@ -2,6 +2,12 @@ import shutil
 import os
 import numpy as np
 
+ROOT_ADDRESS = "/home/pourya/Documents/NashNet/Datasets/"
+SPLIT_FILES_FOLDER = "/Formatted_Data/"
+ORIGINAL_FILES_FOLDER = "Individual_Games/"
+UNSORTED_FILES_FOLDER = "Unsorted/"
+SPLIT_FILE_SAMPLES = 5000
+
 
 # These are scripts to make organizing the generated data less shitty
 # Simple utility func
@@ -12,9 +18,9 @@ def ensure_path_exists(path):
 
 # Moves games from unsorted to their proper folder under Individual_Games
 def move_data_to_folder(dataset_path, delete_duplicates=True):
-    unsorted_path = dataset_path+"Unsorted/"
+    unsorted_path = dataset_path+ UNSORTED_FILES_FOLDER
 
-    #   Exclude directories
+    # Exclude directories
     files = os.listdir(unsorted_path)
 
     # Find if
@@ -35,14 +41,14 @@ def move_data_to_folder(dataset_path, delete_duplicates=True):
         x = x[x.find("-")+1:]
 
         strategies_folder = x[:x.find("_")]+"/"
-        individual_games_folder = dataset_path+players_folder+strategies_folder+"Individual_Games/"
+        individual_games_folder = dataset_path+players_folder+strategies_folder+ ORIGINAL_FILES_FOLDER
 
         # Check if strategies folder exists. If not, create it
         # Also ensure that the individual_games subfolder exists
         ensure_path_exists(dataset_path+players_folder+strategies_folder)
         ensure_path_exists(individual_games_folder)
 
-        # Check if f is currently in individual_games_folder
+        # Check if f is currently in individual_games folder
         if f in os.listdir(individual_games_folder):
             print("Duplicate game found: ", f)
             if delete_duplicates:
@@ -71,10 +77,10 @@ def combine_games(path, force_regen=False):
     # If gen, then create combined games and equilibria files
     # Get all files
 
-def split_games(path, size=5000):
+def split_games(path, size=SPLIT_FILE_SAMPLES):
     # Get files and sort them
-    full_path = path+"/Individual_Games/"
-    dest_path = path+"/Formatted_Data/"
+    full_path = path+ ORIGINAL_FILES_FOLDER
+    dest_path = path+ SPLIT_FILES_FOLDER
     files = os.listdir(full_path)
     equilibrias = [x for x in files if "Equilibria" in x]
     games = [x for x in files if "Games" in x]
@@ -114,9 +120,6 @@ def split_games(path, size=5000):
             np.save(dest_path+"Equilibria_"+str(acc_ctr)+".npy", e_acc)
             acc_ctr += 1
 
-move_data_to_folder(dataset_path="/home/pourya/Documents/NashNet/Datasets/")
-split_games("/home/pourya/Documents/NashNet/Datasets/2P/2x2/")
-
-    
-
+move_data_to_folder(dataset_path=ROOT_ADDRESS)
+split_games()
 

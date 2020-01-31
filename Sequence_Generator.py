@@ -50,14 +50,13 @@ class NashSequence(Sequence):
         eq_shape = tmp_eq.shape[1:]
         self.y = np.zeros((batch_size,) + eq_shape)
 
-        # Check to make sure that each file is the SAME DAMN SIZE
-        #   this is necessary in order to make this shit properly threadsafe
+        # Check to make sure that each file is the same size
+        #   this is necessary in order to make this properly thread-safe
         #   so that we can use multiple workers to prefetch batches faster
-        #   Makes the tiny-ass batch size such a bit less
         self.file_len = tmp_game.shape[0]
 
         # NOTE! Currently, a batch cannot span over more than two files.
-        # This means batch size CANNOT be greater than the file len
+        # This means batch size cannot be greater than the file length
         if self.batch_size > self.file_len:
             raise ValueError("Err: Batch size cannot be greater than number of samples in a single file!")
 
@@ -97,32 +96,33 @@ class NashSequence(Sequence):
 
         # If lower > upper, then two files needed
         if lower > upper:
-            remainder = self.file_len - lower
+            remainder = self.batch_size - upper
             f2_idx = f1_idx + 1
 
             # If f2_idx >= self.num_training_files, then the end has been reached, and this is a special case
+            # In this case, copy to the variables as much as possible and let the rest unchanged
             if f2_idx >= self.num_training_files:
-                self.x = np.copy(g[lower:])
-                self.y = np.copy(e[lower:])
+                self.x[0: self.file_len - lower] = np.copy(g[lower: self.file_len])
+                self.y[0: self.file_len - lower] = np.copy(e[lower: self.file_len])
 
             # If not, then things are normal
             else:
                 # Assign stuff from file 1
-                self.x[0:remainder] = g[lower:self.file_len]
-                self.y[0:remainder] = e[lower:self.file_len]
+                self.x[0:remainder] = g[lower: self.file_len]
+                self.y[0:remainder] = e[lower: self.file_len]
 
                 # Load f2
-                g = np.load(os.path.join(self.files_location, self.game_files[f1_idx]))
-                e = np.load(os.path.join(self.files_location, self.equilibria_files[f1_idx]))
+                g = np.load(os.path.join(self.files_location, self.game_files[f2_idx]))
+                e = np.load(os.path.join(self.files_location, self.equilibria_files[f2_idx]))
 
                 # Assign the rest of the values to x and y
-                self.x[remainder:self.batch_size] = g[0:self.batch_size - remainder]
-                self.y[remainder:self.batch_size] = e[0:self.batch_size - remainder]
+                self.x[remainder:self.batch_size] = g[0: upper]
+                self.y[remainder:self.batch_size] = e[0: upper]
 
         # Only one file needed
         else:
-            self.x = g[lower:upper]
-            self.y = e[lower:upper]
+            self.x = g[lower: upper]
+            self.y = e[lower: upper]
 
         # Process samples and return
         return self.__process_data(self.x, self.y)
@@ -131,6 +131,10 @@ class NashSequence(Sequence):
         np.random.shuffle(self.indices)
 
     def __process_data(self, sampleGames, sampleEquilibria):
+        """
+        Function to process the games and equilibria before passing it to the optimizer
+        """
+
         # Shuffle the dataset arrays
         sampleGames, sampleEquilibria = unisonShuffle(sampleGames, sampleEquilibria)
 
