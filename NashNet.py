@@ -355,11 +355,26 @@ class NashNet:
         # Load and concatenate the files
         test_games = np.load(address + test_files[0][0])
         test_equilibria = np.load(address + test_files[0][1])
-        for (game_file, eq_file) in test_files:
+
+        for (game_file, eq_file) in test_files[1:]:
             games_temp = np.load(address + game_file)
             eq_temp = np.load(address + eq_file)
-            test_games = np.append(test_games, games_temp)
-            test_equilibria = np.append(test_equilibria, eq_temp)
+            test_games = np.append(test_games, games_temp, axis=0)
+            test_equilibria = np.append(test_equilibria, eq_temp, axis=0)
+
+        # Limit the number of true equilibria for each sample game if they are more than max_equilibria
+        if self.cfg["max_equilibria"] < test_equilibria.shape[1]:
+            test_equilibria = test_equilibria[:, 0: self.cfg["max_equilibria"], :, :]
+        elif self.cfg["max_equilibria"] > test_equilibria.shape[1]:
+            raise Exception(
+                '\nmax_equilibria is larger than the number of per sample true equilibria in the provided dataset.\n')
+
+        # Normalize if set to do so
+        if self.cfg["normalize_input_data"]:
+            axes_except_zero = tuple([ax for ax in range(1, len(test_games.shape))])
+            scalar_dim_except_zero = (test_games.shape[0],) + (1,) * (len(test_games.shape) - 1)
+            test_games = (test_games - np.reshape(np.min(test_games, axis=axes_except_zero), scalar_dim_except_zero)) / \
+                          np.reshape(np.max(test_games, axis=axes_except_zero) - np.min(test_games, axis=axes_except_zero), scalar_dim_except_zero)
 
         return test_games, test_equilibria
 

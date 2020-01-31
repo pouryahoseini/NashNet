@@ -2,7 +2,7 @@
 
 FILES=$(ls Configs/)
 
-echo "Runnning using the following configuration files: $FILES"
+printf "Runnning using the following configuration files:\n$FILES\n"
 
 mkdir Results
 
@@ -12,6 +12,8 @@ for f in $FILES; do
   FNAME=$(basename "$f" | cut -d. -f1)
   mkdir -p "./Results/$FNAME/Model"
   mkdir -p "./Results/$FNAME/Reports"
-  mv ./Model/* "./Results/$FNAME/Model"
-  mv ./Reports/* "./Results/$FNAME/Reports"
+  mv ./Model/*.json "./Results/$FNAME/Model"
+  mv ./Model/*.h5 "./Results/$FNAME/Model"
+  mv ./Reports/*.txt "./Results/$FNAME/Reports"
+  mv ./Reports/*.csv "./Results/$FNAME/Reports"
 done
