@@ -1,7 +1,8 @@
+import sys
 from NashNet import NashNet
 
 # Build a network instance
-nash_net = NashNet('Config.cfg', configSection="DEFAULT")
+nash_net = NashNet(sys.argv[1], configSection="DEFAULT")
 
 # Train the network
 nash_net.train()
