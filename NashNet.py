@@ -127,21 +127,23 @@ class NashNet:
             callbacks_list += [EpsilonCallback()]
 
         # Train the model
-        trainingHistory = self.model.fit(NashSequence(files_list=training_files,
-                                                      files_location=dataset_location+'Formatted_Data/',
-                                                      max_equilibria=self.cfg["max_equilibria"],
-                                                      normalize_input_data=self.cfg["normalize_input_data"],
-                                                      batch_size=self.cfg["test_batch_size"]),
-                                         validation_data=NashSequence(files_list=validation_files,
-                                                                      files_location=dataset_location+'Formatted_Data/',
-                                                                      max_equilibria=self.cfg["max_equilibria"],
-                                                                      normalize_input_data=self.cfg["normalize_input_data"],
-                                                                      batch_size=self.cfg["test_batch_size"]),
+        seq = NashSequence(files_list=training_files,
+                           files_location=dataset_location + 'Formatted_Data/',
+                           max_equilibria=self.cfg["max_equilibria"],
+                           normalize_input_data=self.cfg["normalize_input_data"],
+                           batch_size=self.cfg["batch_size"])
+        valid_seq = NashSequence(files_list=validation_files,
+                                 files_location=dataset_location+'Formatted_Data/',
+                                 max_equilibria=self.cfg["max_equilibria"],
+                                 normalize_input_data=self.cfg["normalize_input_data"],
+                                 batch_size=self.cfg["batch_size"])
+        trainingHistory = self.model.fit(seq,
+                                         validation_data=valid_seq,
                                          epochs=self.cfg["epochs"],
                                          shuffle='batch',
                                          callbacks=callbacks_list,
                                          use_multiprocessing=True,
-                                         workers=8
+                                         workers=8,
                                          )
 
         # Save the model

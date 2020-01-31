@@ -72,7 +72,7 @@ class NashSequence(Sequence):
                 raise ValueError(errmsg)
 
             # Accumulate
-            self.num_samples += self.num_samples + g.shape[0]
+            self.num_samples = self.num_samples + g.shape[0]
 
         # Create array of indices to randomize the order things are fed into the model
         self.num_training_files = len(self.game_files)
@@ -87,9 +87,9 @@ class NashSequence(Sequence):
     def __getitem__(self, batch_num):
         # 2 Cases - Data is all in one file, or data is split over two files
         #   1st file is found by using the formula f1_idx = int(batch_num*self.batch_size/self.file_len)
-        f1_idx = int(batch_num*self.batch_size/self.file_len)
-        lower=batch_num * self.batch_size % self.file_len
-        upper=(batch_num+1) * self.batch_size % self.file_len
+        f1_idx = int(batch_num * self.batch_size / self.file_len)
+        lower = (batch_num * self.batch_size) % self.file_len
+        upper = ((batch_num + 1) * self.batch_size) % self.file_len
 
         # Load samples from f1 - This will always be done.
         g = np.load(os.path.join(self.files_location, self.game_files[f1_idx]))
@@ -98,7 +98,7 @@ class NashSequence(Sequence):
         # If lower > upper, then two files needed
         if lower > upper:
             remainder = self.file_len - lower
-            f2_idx = f1_idx+1
+            f2_idx = f1_idx + 1
 
             # If f2_idx >= self.num_training_files, then the end has been reached, and this is a special case
             if f2_idx >= self.num_training_files:
@@ -108,26 +108,24 @@ class NashSequence(Sequence):
             # If not, then things are normal
             else:
                 # Assign stuff from file 1
-                self.x[0:remainder] = g[lower:]
-                self.y[0:remainder] = e[lower:]
+                self.x[0:remainder] = g[lower:self.file_len]
+                self.y[0:remainder] = e[lower:self.file_len]
 
                 # Load f2
                 g = np.load(os.path.join(self.files_location, self.game_files[f1_idx]))
                 e = np.load(os.path.join(self.files_location, self.equilibria_files[f1_idx]))
 
                 # Assign the rest of the values to x and y
-                self.x[remainder:self.batch_size] = g[0:remainder]
-                self.y[remainder:self.batch_size] = e[0:remainder]
+                self.x[remainder:self.batch_size] = g[0:self.batch_size - remainder]
+                self.y[remainder:self.batch_size] = e[0:self.batch_size - remainder]
 
         # Only one file needed
         else:
-            self.x[0:self.batch_size] = g[lower:upper]
-            self.y[0:self.batch_size] = e[lower:upper]
+            self.x = g[lower:upper]
+            self.y = e[lower:upper]
 
-        # Process samples
-        self.x, self.y = self.__process_data(self.x, self.y)
-
-        return self.x, self.y
+        # Process samples and return
+        return self.__process_data(self.x, self.y)
 
     def on_epoch_end(self):
         np.random.shuffle(self.indices)
