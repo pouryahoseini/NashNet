@@ -8,7 +8,7 @@ mkdir Results
 
 for f in $FILES; do
   echo "Running file $f"
-  python3 Run.py $f
+  python3 Run.py "./Configs/$f"
   FNAME=$(basename "$f" | cut -d. -f1)
   mkdir -p "./Results/$FNAME/Model"
   mkdir -p "./Results/$FNAME/Reports"

@@ -419,11 +419,12 @@ class NashNet:
         config_parser = configparser.ConfigParser()
 
         # Read the config file
-        listOfFilesRead = config_parser.read('./Config/' + configFile)
+        # listOfFilesRead = config_parser.read('./Configs/' + configFile)
+        listOfFilesRead = config_parser.read(configFile)
 
         # Make sure at least a configuration file was read
         if len(listOfFilesRead) <= 0:
-            raise Exception("Fatal Error: No configuration file " + configFile + " found in ./Config/.")
+            raise Exception("Fatal Error: No configuration file " + configFile + " found in ./Configs/.")
 
         # Load all the necessary configurations
         self.cfg["num_players"] = config_parser.getint(configSection, "num_players")
