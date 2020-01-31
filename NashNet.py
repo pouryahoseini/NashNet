@@ -99,11 +99,12 @@ class NashNet:
                                                                            validation_split=self.cfg["validation_split"],
                                                                            test_split=self.cfg["test_split"])
 
-        # Generate the arrays of test data
-        self.test_games, self.test_equilibria = self.generate_test_data_array(self.test_files)
+        if self.cfg['save_test_data']:
+            # Generate the arrays of test data
+            self.test_games, self.test_equilibria = self.generate_test_data_array(self.test_files)
 
-        # Save the list of test files
-        saveTestData(self.test_games, self.test_equilibria, self.cfg["num_players"], self.cfg["num_strategies"])
+            # Save the list of test files
+            saveTestData(self.test_games, self.test_equilibria, self.cfg["num_players"], self.cfg["num_strategies"])
 
         # Print the summary of the model
         print(self.model.summary())
@@ -143,7 +144,7 @@ class NashNet:
                                          shuffle='batch',
                                          callbacks=callbacks_list,
                                          use_multiprocessing=True,
-                                         workers=8,
+                                         workers=1,
                                          )
 
         # Save the model
@@ -491,6 +492,7 @@ class NashNet:
         self.cfg['hydra_layer_sizes_per_player'] = ast.literal_eval(config_parser.get(configSection, "hydra_layer_sizes_per_player"))
         self.cfg['monohead_layer_sizes_per_player'] = ast.literal_eval(config_parser.get(configSection, "monohead_layer_sizes_per_player"))
         self.cfg['split_files_folder_name'] = config_parser.get(configSection, "split_files_folder_name")
+        self.cfg['save_test_data'] = config_parser.getboolean(configSection, "save_test_data")
 
         # Check input configurations
         if not (0 < self.cfg["validation_split"] < 1):
