@@ -39,6 +39,7 @@ class NashSequence(Sequence):
         self.max_equilibria = max_equilibria
         self.normalize_input_data = normalize_input_data
         self.files_location = files_location
+        self.last_file_index = -1
 
         # Create numpy array to hold x data
         tmp_game = np.load(os.path.join(files_location, self.game_files[0]))
@@ -89,10 +90,12 @@ class NashSequence(Sequence):
         f1_idx = int(batch_num * self.batch_size / self.file_len)
         lower = (batch_num * self.batch_size) % self.file_len
         upper = ((batch_num + 1) * self.batch_size) % self.file_len
-
+        print(f1_idx)
         # Load samples from f1 - This will always be done.
-        g = np.load(os.path.join(self.files_location, self.game_files[f1_idx]))
-        e = np.load(os.path.join(self.files_location, self.equilibria_files[f1_idx]))
+        if self.last_file_index != f1_idx:
+            self.g = np.load(os.path.join(self.files_location, self.game_files[f1_idx]))
+            self.e = np.load(os.path.join(self.files_location, self.equilibria_files[f1_idx]))
+            self.last_file_index = f1_idx
 
         # If lower > upper, then two files needed
         if lower > upper:
@@ -102,27 +105,28 @@ class NashSequence(Sequence):
             # If f2_idx >= self.num_training_files, then the end has been reached, and this is a special case
             # In this case, copy to the variables as much as possible and let the rest unchanged
             if f2_idx >= self.num_training_files:
-                self.x[0: self.file_len - lower] = np.copy(g[lower: self.file_len])
-                self.y[0: self.file_len - lower] = np.copy(e[lower: self.file_len])
+                self.x[0: self.file_len - lower] = np.copy(self.g[lower: self.file_len])
+                self.y[0: self.file_len - lower] = np.copy(self.e[lower: self.file_len])
 
             # If not, then things are normal
             else:
                 # Assign stuff from file 1
-                self.x[0:remainder] = g[lower: self.file_len]
-                self.y[0:remainder] = e[lower: self.file_len]
+                self.x[0:remainder] = self.g[lower: self.file_len]
+                self.y[0:remainder] = self.e[lower: self.file_len]
 
                 # Load f2
-                g = np.load(os.path.join(self.files_location, self.game_files[f2_idx]))
-                e = np.load(os.path.join(self.files_location, self.equilibria_files[f2_idx]))
+                self.g = np.load(os.path.join(self.files_location, self.game_files[f2_idx]))
+                self.e = np.load(os.path.join(self.files_location, self.equilibria_files[f2_idx]))
+                self.last_file_index = f2_idx
 
                 # Assign the rest of the values to x and y
-                self.x[remainder:self.batch_size] = g[0: upper]
-                self.y[remainder:self.batch_size] = e[0: upper]
+                self.x[remainder:self.batch_size] = self.g[0: upper]
+                self.y[remainder:self.batch_size] = self.e[0: upper]
 
         # Only one file needed
         else:
-            self.x = g[lower: upper]
-            self.y = e[lower: upper]
+            self.x = self.g[lower: upper]
+            self.y = self.e[lower: upper]
 
         # Process samples and return
         return self.__process_data(self.x, self.y)

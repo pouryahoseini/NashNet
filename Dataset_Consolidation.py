@@ -7,7 +7,7 @@ ROOT_ADDRESS = "/home/pourya/Documents/NashNet/Datasets/"
 SPLIT_FILES_FOLDER = "/Split_Files/"
 ORIGINAL_FILES_FOLDER = "Individual_Games/"
 UNSORTED_FILES_FOLDER = "Unsorted/"
-SPLIT_FILE_SAMPLES = 5000
+SPLIT_FILE_SAMPLES = 100000
 
 
 # These are scripts to make organizing the generated data less shitty

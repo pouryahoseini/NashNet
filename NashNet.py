@@ -141,10 +141,11 @@ class NashNet:
         trainingHistory = self.model.fit(seq,
                                          validation_data=valid_seq,
                                          epochs=self.cfg["epochs"],
-                                         shuffle='batch',
+                                         # shuffle='batch',
                                          callbacks=callbacks_list,
+                                         max_queue_size=5,
                                          use_multiprocessing=True,
-                                         workers=1,
+                                         workers=3,
                                          )
 
         # Save the model
