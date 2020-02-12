@@ -84,7 +84,9 @@ def split_games(path, size=SPLIT_FILE_SAMPLES):
     # Get files and sort them
     full_path = path + ORIGINAL_FILES_FOLDER
     dest_path = path + SPLIT_FILES_FOLDER
+    ensure_path_exists(dest_path)
     files = os.listdir(full_path)
+
     equilibria = [x for x in files if "Equilibria" in x]
     games = [x for x in files if "Games" in x]
 
@@ -100,28 +102,40 @@ def split_games(path, size=SPLIT_FILE_SAMPLES):
     e_init = np.load(full_path + equilibria[0])
     g_acc = np.zeros((size,) + g_init.shape[1:])
     e_acc = np.zeros((size,) + e_init.shape[1:])
-    acc_ctr = 0
-    if g_init.shape[0] < size or g_init.shape[0] % size != 0:
-        raise ValueError("Shape is smaller than size, or size does not evenly divide shape.")
+    acc_ctr = counter = file_no = 0
+
+    if size % g_init.shape[0] != 0 and g_init.shape[0] % size != 0:
+        raise ValueError("Size does not evenly divide shape.")
 
     for i in range(len(games)):
         # Open the npy
         g = np.load(full_path + games[i])
         e = np.load(full_path + equilibria[i])
 
-        # Iterate through arrays and write the new shit to files
-        ensure_path_exists(dest_path)
-
         # Only use more recent generated games where shape is (## of games, <Game stuff>)
-        for j in range(int(g.shape[0] / size)):
-            # Copy over section into accumulator arrays
-            g_acc[0:size] = g[j * size:(j + 1) * size]
-            e_acc[0:size] = e[j * size:(j + 1) * size]
+        if g_init.shape[0] < size:
+            game_shape = g.shape[0]
+            g_acc[counter * game_shape: (counter + 1) * game_shape] = g
+            e_acc[counter * game_shape: (counter + 1) * game_shape] = e
 
-            # Save the accumulator arrays, and increment acc_ctr
-            np.save(dest_path + "Games_" + str(acc_ctr) + ".npy", g_acc)
-            np.save(dest_path + "Equilibria_" + str(acc_ctr) + ".npy", e_acc)
-            acc_ctr += 1
+            if (counter + 1) * game_shape >= size:
+                # Save the accumulator arrays
+                np.save(dest_path + "Games_" + str(file_no) + ".npy", g_acc)
+                np.save(dest_path + "Equilibria_" + str(file_no) + ".npy", e_acc)
+                file_no += 1
+                counter = 0
+            else:
+                counter += 1
+        else:
+            for j in range(int(g.shape[0] / size)):
+                # Copy over section into accumulator arrays
+                g_acc[0:size] = g[j * size:(j + 1) * size]
+                e_acc[0:size] = e[j * size:(j + 1) * size]
+
+                # Save the accumulator arrays, and increment acc_ctr
+                np.save(dest_path + "Games_" + str(acc_ctr) + ".npy", g_acc)
+                np.save(dest_path + "Equilibria_" + str(acc_ctr) + ".npy", e_acc)
+                acc_ctr += 1
 
 
 move_data_to_folder(dataset_path=ROOT_ADDRESS)
