@@ -2,12 +2,13 @@ import shutil
 import os
 import numpy as np
 
-RELATIVE_SPLITTING_ADDRESS = "2P/4x4/"
+RELATIVE_SPLITTING_ADDRESS = "2P/10x10/"
 ROOT_ADDRESS = "/home/pourya/Documents/NashNet/Datasets/"
 SPLIT_FILES_FOLDER = "/Split_Files/"
 ORIGINAL_FILES_FOLDER = "Individual_Games/"
 UNSORTED_FILES_FOLDER = "Unsorted/"
-SPLIT_FILE_SAMPLES = 100000
+MOVE_DATA_FIRST = False
+NEW_FILE_SIZE = 500000
 
 
 # These are scripts to make organizing the generated data less shitty
@@ -62,24 +63,7 @@ def move_data_to_folder(dataset_path, delete_duplicates=True):
             shutil.move(unsorted_path + f, individual_games_folder + f)
 
 
-# Checks to see if any new games have been added, and creates combined Equilibria and Games files
-#   Input - Folder, which contains a subfolder named Individual Games
-def combine_games(path, force_regen=False):
-    # Get all files in the directory
-    files = os.listdir(path)
-
-    # Check and see if a combined games file and tracker exist yet
-    if "Combined_Games.npy" in files and \
-            "Combined_Equilibria.npy" in files and \
-            "Combined_List.pkl" in files:
-        # They exist - Check and see if there were any new files added
-        gen = True  # I'm lazy - for now it's just always gonna generate.
-
-    # If gen, then create combined games and equilibria files
-    # Get all files
-
-
-def split_games(path, size=SPLIT_FILE_SAMPLES):
+def split_games(path, size=NEW_FILE_SIZE):
     print('Splitting the dataset files')
     # Get files and sort them
     full_path = path + ORIGINAL_FILES_FOLDER
@@ -138,5 +122,6 @@ def split_games(path, size=SPLIT_FILE_SAMPLES):
                 acc_ctr += 1
 
 
-move_data_to_folder(dataset_path=ROOT_ADDRESS)
+if MOVE_DATA_FIRST:
+    move_data_to_folder(dataset_path=ROOT_ADDRESS)
 split_games(ROOT_ADDRESS + RELATIVE_SPLITTING_ADDRESS)
