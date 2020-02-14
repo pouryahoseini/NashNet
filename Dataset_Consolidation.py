@@ -8,7 +8,7 @@ SPLIT_FILES_FOLDER = "/Split_Files/"
 ORIGINAL_FILES_FOLDER = "Individual_Games/"
 UNSORTED_FILES_FOLDER = "Unsorted/"
 MOVE_DATA_FIRST = False
-NEW_FILE_SIZE = 500000
+NEW_FILE_SIZE = 5000
 
 
 # These are scripts to make organizing the generated data less shitty
