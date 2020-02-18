@@ -1212,4 +1212,4 @@ def commutativity_test(tests_games, test_eq, model, permutation_number, test_bat
 
     average_mae /= permutation_number
 
-    return average_mae
+    return tf.get_static_value(average_mae)
