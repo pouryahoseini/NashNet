@@ -217,6 +217,7 @@ class NashNet:
                       num_players=self.cfg["num_players"],
                       enable_hydra=self.cfg["enable_hydra"],
                       cluster_examples=self.cfg["cluster_examples"],
+                      print_to_terminal=self.cfg["print_to_terminal"],
                       payoffToEq_weight=self.cfg["payoff_to_equilibrium_weight"]
                       )
 
@@ -521,6 +522,7 @@ class NashNet:
         self.cfg['generator_max_queue_size'] = config_parser.getint(configSection, "generator_max_queue_size")
         self.cfg['generator_multiprocessing'] = config_parser.getboolean(configSection, "generator_multiprocessing")
         self.cfg['generator_workers'] = config_parser.getint(configSection, "generator_workers")
+        self.cfg["print_to_terminal"] = config_parser.getboolean(configSection, "print_to_terminal")
 
         # Check input configurations
         if not (0 < self.cfg["validation_split"] < 1):

@@ -816,7 +816,8 @@ def saveModel(model, model_architecture_file, model_weights_file):
 
 # ********************************
 def printExamples(numberOfExamples, testSamples, testEqs, nn_model, examples_print_file, pureStrategies_per_player,
-                  lossType, payoffLoss_type, num_players, enable_hydra, cluster_examples, payoffToEq_weight=None):
+                  lossType, payoffLoss_type, num_players, enable_hydra, cluster_examples, print_to_terminal,
+                  payoffToEq_weight=None):
     """
     Function to make some illustrative predictions and print them
     """
@@ -883,7 +884,8 @@ def printExamples(numberOfExamples, testSamples, testEqs, nn_model, examples_pri
                       "{}\n" * len(predicted_equilibria) + "\n\nLoss: {:.4f}\n") \
             .format(*([exampleCounter + 1] + true_equilibria + predicted_equilibria + [K.get_value(loss)]))
 
-        print(printString)
+        if print_to_terminal:
+            print(printString)
 
         # Write the string to the file
         printFile.write(printString)
