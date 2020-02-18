@@ -90,7 +90,7 @@ class NashSequence(Sequence):
         f1_idx = int(batch_num * self.batch_size / self.file_len)
         lower = (batch_num * self.batch_size) % self.file_len
         upper = ((batch_num + 1) * self.batch_size) % self.file_len
-        print(f1_idx)
+
         # Load samples from f1 - This will always be done.
         if self.last_file_index != f1_idx:
             self.g = np.load(os.path.join(self.files_location, self.game_files[f1_idx]))
