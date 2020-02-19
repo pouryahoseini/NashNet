@@ -79,7 +79,8 @@ class NashNet:
                                            num_cycles=self.cfg["num_cycles"],
                                            max_epochs=self.cfg["epochs"],
                                            save_dir='./Model/Interim/',
-                                           save_name="interimWeight"),
+                                           save_name="interimWeight",
+                                           save_interim_weights=self.cfg["save_interim_weights"]),
                           keras.callbacks.ModelCheckpoint(filepath='./Model/' + self.cfg[
                               "model_best_weights_file"] + '.h5',
                                                           monitor='val_loss',
@@ -523,6 +524,7 @@ class NashNet:
         self.cfg['generator_multiprocessing'] = config_parser.getboolean(configSection, "generator_multiprocessing")
         self.cfg['generator_workers'] = config_parser.getint(configSection, "generator_workers")
         self.cfg["print_to_terminal"] = config_parser.getboolean(configSection, "print_to_terminal")
+        self.cfg["save_interim_weights"] = config_parser.getboolean(configSection, "save_interim_weights")
 
         # Check input configurations
         if not (0 < self.cfg["validation_split"] < 1):

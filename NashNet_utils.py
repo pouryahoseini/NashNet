@@ -898,7 +898,7 @@ class TrainingCallback(tf.keras.callbacks.Callback):
     """
     Class to save model and change learning rate during the training
     """
-    def __init__(self, initial_lr, num_cycles, max_epochs, save_dir, save_name):
+    def __init__(self, initial_lr, num_cycles, max_epochs, save_dir, save_name, save_interim_weights):
         # Learning Rate Scheduler Variables
         self.initial_lr = initial_lr
         self.max_epochs = max_epochs
@@ -907,6 +907,7 @@ class TrainingCallback(tf.keras.callbacks.Callback):
         # Checkpoint and saving variables
         self.save_dir = save_dir
         self.save_name = save_name
+        self.save_interim_weights = save_interim_weights
 
     #     def on_train_begin(self, logs=None):
     #         return
@@ -924,7 +925,7 @@ class TrainingCallback(tf.keras.callbacks.Callback):
 
     def on_epoch_end(self, epoch, logs=None):
         # If model is at minima (before learning rate goes up again), save the model
-        if (epoch % (self.max_epochs / self.num_cycles) == 0) and (epoch != 0):
+        if (epoch % (self.max_epochs / self.num_cycles) == 0) and (epoch != 0) and self.save_interim_weights:
             # Get snapshot number
             snapshot_num = int(epoch / int(self.max_epochs / self.num_cycles))
 
