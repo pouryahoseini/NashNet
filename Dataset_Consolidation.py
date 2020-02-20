@@ -2,12 +2,12 @@ import shutil
 import os
 import numpy as np
 
-RELATIVE_SPLITTING_ADDRESS = "2P/10x10/"
-ROOT_ADDRESS = "/home/pourya/Documents/NashNet/Datasets/"
+RELATIVE_SPLITTING_ADDRESS = "2P/10x10"
+ROOT_ADDRESS = "/home/dkbarnes/PycharmProjects/NashNet/Datasets/"
 SPLIT_FILES_FOLDER = "/Split_Files/"
 ORIGINAL_FILES_FOLDER = "Individual_Games/"
 UNSORTED_FILES_FOLDER = "Unsorted/"
-MOVE_DATA_FIRST = False
+MOVE_DATA_FIRST = True
 NEW_FILE_SIZE = 5000
 
 
@@ -124,4 +124,15 @@ def split_games(path, size=NEW_FILE_SIZE):
 
 if MOVE_DATA_FIRST:
     move_data_to_folder(dataset_path=ROOT_ADDRESS)
-split_games(ROOT_ADDRESS + RELATIVE_SPLITTING_ADDRESS)
+splitting_addrs = ["/2P/2x2/",
+         "/3P/2x2x2/",
+         "/4P/2x2x2x2/",
+         "/5P/2x2x2x2x2/",
+         "/2P/2x3/",
+         "/3P/2x3x4/",
+         "/2P/3x3/",
+         "/2P/4x4/",
+         "/2P/10x8/",
+         "/2P/10x10/"]
+for rel in splitting_addrs:
+    split_games(ROOT_ADDRESS + rel)
