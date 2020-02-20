@@ -816,7 +816,8 @@ def saveModel(model, model_architecture_file, model_weights_file):
 
 # ********************************
 def printExamples(numberOfExamples, testSamples, testEqs, nn_model, examples_print_file, pureStrategies_per_player,
-                  lossType, payoffLoss_type, num_players, enable_hydra, cluster_examples, payoffToEq_weight=None):
+                  lossType, payoffLoss_type, num_players, enable_hydra, cluster_examples, print_to_terminal,
+                  payoffToEq_weight=None):
     """
     Function to make some illustrative predictions and print them
     """
@@ -883,7 +884,8 @@ def printExamples(numberOfExamples, testSamples, testEqs, nn_model, examples_pri
                       "{}\n" * len(predicted_equilibria) + "\n\nLoss: {:.4f}\n") \
             .format(*([exampleCounter + 1] + true_equilibria + predicted_equilibria + [K.get_value(loss)]))
 
-        print(printString)
+        if print_to_terminal:
+            print(printString)
 
         # Write the string to the file
         printFile.write(printString)
@@ -896,7 +898,7 @@ class TrainingCallback(tf.keras.callbacks.Callback):
     """
     Class to save model and change learning rate during the training
     """
-    def __init__(self, initial_lr, num_cycles, max_epochs, save_dir, save_name):
+    def __init__(self, initial_lr, num_cycles, max_epochs, save_dir, save_name, save_interim_weights):
         # Learning Rate Scheduler Variables
         self.initial_lr = initial_lr
         self.max_epochs = max_epochs
@@ -905,6 +907,7 @@ class TrainingCallback(tf.keras.callbacks.Callback):
         # Checkpoint and saving variables
         self.save_dir = save_dir
         self.save_name = save_name
+        self.save_interim_weights = save_interim_weights
 
     #     def on_train_begin(self, logs=None):
     #         return
@@ -922,7 +925,7 @@ class TrainingCallback(tf.keras.callbacks.Callback):
 
     def on_epoch_end(self, epoch, logs=None):
         # If model is at minima (before learning rate goes up again), save the model
-        if (epoch % (self.max_epochs / self.num_cycles) == 0) and (epoch != 0):
+        if (epoch % (self.max_epochs / self.num_cycles) == 0) and (epoch != 0) and self.save_interim_weights:
             # Get snapshot number
             snapshot_num = int(epoch / int(self.max_epochs / self.num_cycles))
 
@@ -1212,4 +1215,4 @@ def commutativity_test(tests_games, test_eq, model, permutation_number, test_bat
 
     average_mae /= permutation_number
 
-    return average_mae
+    return tf.get_static_value(average_mae)

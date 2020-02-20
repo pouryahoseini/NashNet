@@ -7,7 +7,8 @@ ROOT_ADDRESS = "/home/dkbarnes/PycharmProjects/NashNet/Datasets/"
 SPLIT_FILES_FOLDER = "/Split_Files/"
 ORIGINAL_FILES_FOLDER = "Individual_Games/"
 UNSORTED_FILES_FOLDER = "Unsorted/"
-MOVE_DATA_FIRST = True
+MOVE_DATA_FIRST = False
+DELETE_ORIGINAL_FILES = False
 NEW_FILE_SIZE = 5000
 
 
@@ -95,6 +96,11 @@ def split_games(path, size=NEW_FILE_SIZE):
         # Open the npy
         g = np.load(full_path + games[i])
         e = np.load(full_path + equilibria[i])
+
+        #Delete original files if enabled
+        if DELETE_ORIGINAL_FILES:
+            os.remove(full_path + games[i])
+            os.remove(full_path + equilibria[i])
 
         # Only use more recent generated games where shape is (## of games, <Game stuff>)
         if g_init.shape[0] < size:
