@@ -5,18 +5,18 @@ import math, random
 import pandas as pd
 from sklearn import cluster
 import os
+import time
 
-
-# ********************************
-def GetTrainingDataFromNPY(data_file, labels_file):
-    """
-    Function to load dataset from two .npy files
-    """
-
-    data = np.load(data_file)
-    labels = np.load(labels_file)
-
-    return data, labels
+# # ********************************
+# def GetTrainingDataFromNPY(data_file, labels_file):
+#     """
+#     Function to load dataset from two .npy files
+#     """
+#
+#     data = np.load(data_file)
+#     labels = np.load(labels_file)
+#
+#     return data, labels
 
 
 # ********************************
@@ -758,7 +758,7 @@ def save_training_history(trainingHistory, trainingHistory_file):
 
 
 # ********************************
-def saveTestData(testSamples, testEqs, num_players, num_strategies):
+def saveTestData(test_files, saved_test_files_list, num_players, num_strategies):
     """
     Function to save test data to reuse for evaluation purposes
     """
@@ -773,12 +773,13 @@ def saveTestData(testSamples, testEqs, num_players, num_strategies):
     if not os.path.exists(address):
         os.mkdir(address)
 
-    np.save(address + 'Saved_Test_Games.npy', testSamples)
-    np.save(address + 'Saved_Test_Equilibria.npy', testEqs)
+    saved_test_files_list += '.npy'
+
+    np.save(os.path.join(address, saved_test_files_list), test_files)
 
 
 # ********************************
-def loadTestData(test_games_file, test_equilibria_file, max_equilibria, num_players, num_strategies):
+def loadTestData(saved_test_files_list, num_players, num_strategies):
     """
     Function to save test data to reuse for evaluation purposes
     """
@@ -788,16 +789,11 @@ def loadTestData(test_games_file, test_equilibria_file, max_equilibria, num_play
         address += 'x' + str(strategy)
     address += '/Test_Data/'
 
-    testSamples, testEqs = GetTrainingDataFromNPY(address + test_games_file, address + test_equilibria_file)
+    saved_test_files_list += '.npy'
 
-    # Limit the number of true equilibria for each sample game if they are more than max_equilibria
-    if max_equilibria < testEqs.shape[1]:
-        testEqs = testEqs[:, 0: max_equilibria, :, :]
-    elif max_equilibria > testEqs.shape[1]:
-        raise Exception(
-            '\nmax_equilibria is larger than the number of per sample true equilibria in the provided test dataset.\n')
+    test_files = np.load(os.path.join(address + saved_test_files_list))
 
-    return testSamples, testEqs
+    return test_files
 
 
 # ********************************
@@ -815,24 +811,50 @@ def saveModel(model, model_architecture_file, model_weights_file):
 
 
 # ********************************
-def printExamples(numberOfExamples, testSamples, testEqs, nn_model, examples_print_file, pureStrategies_per_player,
+def printExamples(numberOfExamples, test_data_generator, nn_model, examples_print_file, pureStrategies_per_player,
                   lossType, payoffLoss_type, num_players, enable_hydra, cluster_examples, print_to_terminal,
                   payoffToEq_weight=None):
     """
     Function to make some illustrative predictions and print them
     """
 
+    # Get the number of batches in the test data generator
+    number_of_batches = test_data_generator.__len__()
+
+    # Get an initial batch
+    initial_game_batch, initial_eq_batch = test_data_generator.__getitem__(0)
+
     # Check the requested number of examples is feasible
-    if numberOfExamples > testSamples.shape[0]:
+    if numberOfExamples > (initial_game_batch.shape[0] * number_of_batches):
         print("\n\nNumber of example predictions more than the number of test samples\n")
         exit()
     elif numberOfExamples == 0:
         return
 
-    # Fetching an example game from the test set
-    randomExample = random.randint(0, testSamples.shape[0] - numberOfExamples)
-    exampleGame = testSamples[randomExample: randomExample + numberOfExamples].astype('float32')
-    nash_true = testEqs[randomExample: randomExample + numberOfExamples].astype('float32')
+    # Fetching example games from the test set
+    random_batches = np.random.permutation(number_of_batches)
+    remaining_examples = numberOfExamples
+    batch_counter = 0
+    exampleGame = np.zeros((numberOfExamples,) + initial_game_batch.shape[1:], dtype='float32')
+    nash_true = np.zeros((numberOfExamples,) + initial_eq_batch.shape[1:],  dtype='float32')
+
+    while remaining_examples > 0:
+        # Get a random batch
+        games_batch, eq_batch = test_data_generator.__getitem__(random_batches[batch_counter])
+        batch_counter += 1
+
+        # Accumulate the examples
+        start_index = numberOfExamples - remaining_examples
+        batch_size = games_batch.shape[0]
+        if remaining_examples > batch_size:
+            exampleGame[start_index: start_index + batch_size] = games_batch.astype('float32')
+            nash_true[start_index: start_index + batch_size] = eq_batch.astype('float32')
+        else:
+            exampleGame[start_index:] = games_batch[0: remaining_examples].astype('float32')
+            nash_true[start_index:] = eq_batch[0: remaining_examples].astype('float32')
+
+        # Update the number of remaining examples to get
+        remaining_examples -= batch_size
 
     # Predicting a Nash equilibrium for the example game
     nash_predicted = nn_model.predict(exampleGame).astype('float32')
@@ -1143,11 +1165,10 @@ def max_epsilon(*argv):
 
 
 # ********************************
-def commutativity_test(tests_games, test_eq, model, permutation_number, test_batch_size):
+def commutativity_test(test_data_generator, model, permutation_number):
     """
     A function to gauge the commutativity property of the model.
-    :param tests_games: True test games
-    :param test_eq: True test equilibria
+    :param test_data_generator: A generator of test games
     :param model: The trained model
     :param permutation_number: Number of random permutations to try
     :param test_batch_size: Batch size of test data
@@ -1156,6 +1177,12 @@ def commutativity_test(tests_games, test_eq, model, permutation_number, test_bat
 
     # Check if at least one permutation is requested
     assert permutation_number > 0, 'Number of permutations for commutativity test must be more than zero.'
+
+    # Get the number of batches in test data
+    number_of_batches = test_data_generator.__len__()
+
+    # Get an initial test sample batch
+    tests_games, test_eq = test_data_generator.__getitem__(0)
 
     # Find the maximum possible permutations
     max_perm = 1
@@ -1175,42 +1202,48 @@ def commutativity_test(tests_games, test_eq, model, permutation_number, test_bat
     eq_n_elements = tf.size(test_eq[0][0])
     compensation_factor = tf.cast(eq_n_elements / (eq_n_elements - nan_count), tf.float32)
 
-    # Save the original unpermuted games
-    original_tests_games = tests_games.copy()
-
     # Test different permutations
     average_mae = 0
     for permute_no in range(permutation_number):
         # Print a message
         print('Starting permutation ' + str(permute_no + 1))
 
-        # Permute the strategies for each player
-        for idx, pl_strategies in enumerate(original_tests_games.shape[2:]):
-            indices = tuple(np.random.permutation(pl_strategies))
-            tests_games = np.take(tests_games, indices=indices, axis=(idx + 2))
-
+        total_sample_no = 0
         mae = 0
-        for start_sample in range(0, tests_games.shape[0], test_batch_size):
+        for current_batch in range(number_of_batches):
+            # Read a batch of test data
+            tests_games, test_eq = test_data_generator.__getitem__(current_batch)
+
+            # Save the original unpermuted games
+            original_tests_games = tests_games.copy()
+
+            # Permute the strategies for each player
+            for idx, pl_strategies in enumerate(original_tests_games.shape[2:]):
+                indices = tuple(np.random.permutation(pl_strategies))
+                tests_games = np.take(tests_games, indices=indices, axis=(idx + 2))
 
             # Predict the equilibrium for the original games
-            original_eq = model.predict(original_tests_games[start_sample: start_sample + test_batch_size])
+            original_eq = model.predict(original_tests_games)
 
             # Save number of samples in the current batch
-            sample_number = original_tests_games[start_sample: start_sample + test_batch_size].shape[0]
+            sample_number = original_tests_games.shape[0]
 
             # Predict the permuted game
-            new_eq = model.predict(tests_games[start_sample: start_sample + test_batch_size])
+            new_eq = model.predict(tests_games)
 
             # Compute the mean absolute difference
             absolute_error = tf.math.abs(original_eq - new_eq)
 
             # Replace the dummy outputs (in the case of asymmetric games) with zero
-            absolute_error = tf.where(tf.math.is_nan(test_eq[start_sample: start_sample + test_batch_size]), tf.zeros_like(absolute_error), absolute_error)
+            absolute_error = tf.where(tf.math.is_nan(test_eq), tf.zeros_like(absolute_error), absolute_error)
 
             # Compute the average of absolute errors
             mae += tf.reduce_mean(absolute_error) * compensation_factor * sample_number
 
-        mae /= tests_games.shape[0]
+            # Compute the total number of samples
+            total_sample_no += sample_number
+
+        mae /= total_sample_no
         average_mae += mae
 
     average_mae /= permutation_number

@@ -23,8 +23,8 @@ class NashNet:
         """
 
         # Initialize variables
+        self.test_files = None
         self.trained_model_loaded = False
-        self.test_games = self.test_equilibria = np.array([])
 
         # Set Tensorflow's verbosity
         os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'  # WARN
@@ -32,6 +32,9 @@ class NashNet:
 
         # Load config
         self.load_config(configFile, configSection=configSection)
+
+        # Find the address to the dataset
+        self.dataset_location = self.dataset_address()
 
         # Build the neural network model
         self.build_model()
@@ -51,12 +54,6 @@ class NashNet:
         Function to train NashNet.
         """
 
-        # Load the training data
-        # training_games, training_equilibria, self.test_games, self.test_equilibria = self.load_datasets()
-
-        # Find the address to the dataset
-        dataset_location = self.dataset_address()
-
         # Decide on the training, validation, and test data lists of files
         if self.cfg["rewrite_saved_test_data_if_model_weights_given"] or (not self.weights_initialized):
             training_files, validation_files, self.test_files = self.list_files(num_players=self.cfg["num_players"],
@@ -64,12 +61,9 @@ class NashNet:
                                                                            validation_split=self.cfg["validation_split"],
                                                                            test_split=self.cfg["test_split"])
 
-        # Generate the arrays of test data
-        self.test_games, self.test_equilibria = self.generate_test_data_array(self.test_files)
-
         # Save the list of test files
         if self.cfg['save_test_data']:
-            saveTestData(self.test_games, self.test_equilibria, self.cfg["num_players"], self.cfg["num_strategies"])
+            saveTestData(self.test_files, self.cfg["test_files_list"], self.cfg["num_players"], self.cfg["num_strategies"])
 
         # Print the summary of the model
         print(self.model.summary())
@@ -95,12 +89,12 @@ class NashNet:
 
         # Train the model
         seq = NashSequence(files_list=training_files,
-                           files_location=dataset_location,
+                           files_location=self.dataset_location,
                            max_equilibria=self.cfg["max_equilibria"],
                            normalize_input_data=self.cfg["normalize_input_data"],
                            batch_size=self.cfg["batch_size"])
         valid_seq = NashSequence(files_list=validation_files,
-                                 files_location=dataset_location,
+                                 files_location=self.dataset_location,
                                  max_equilibria=self.cfg["max_equilibria"],
                                  normalize_input_data=self.cfg["normalize_input_data"],
                                  batch_size=self.cfg["batch_size"])
@@ -111,7 +105,7 @@ class NashNet:
                                          callbacks=callbacks_list,
                                          max_queue_size=self.cfg['generator_max_queue_size'],
                                          use_multiprocessing=self.cfg['generator_multiprocessing'],
-                                         workers=self.cfg['generator_workers'],
+                                         workers=self.cfg['generator_workers']
                                          )
 
         # Save the model
@@ -144,12 +138,18 @@ class NashNet:
         if not num_to_print:
             num_to_print = self.cfg["examples_to_print"]
 
-        # Load test data if not already created
-        if not (self.test_games.size and self.test_equilibria.size):
-            self.test_games, self.test_equilibria = loadTestData(self.cfg["test_games_file"],
-                                                                 self.cfg["test_equilibria_file"],
-                                                                 self.cfg["max_equilibria"], self.cfg["num_players"],
-                                                                 self.cfg["num_strategies"])
+        # Load list of test data files if not already created
+        if not self.test_files:
+            self.test_files = loadTestData(self.cfg["test_files_list"],
+                                           self.cfg["num_players"],
+                                           self.cfg["num_strategies"])
+
+        # Create the test data generator
+        test_seq = NashSequence(files_list=self.test_files,
+                                files_location=self.dataset_location,
+                                max_equilibria=self.cfg["max_equilibria"],
+                                normalize_input_data=self.cfg["normalize_input_data"],
+                                batch_size=self.cfg["test_batch_size"])
 
         # Create the list of callbacks
         callbacks_list = []
@@ -158,10 +158,12 @@ class NashNet:
             callbacks_list += [epsilon_callback]
 
         # Test the trained model
-        evaluationResults = self.model.evaluate(self.test_games,
-                                                self.test_equilibria,
-                                                batch_size=self.cfg['test_batch_size'],
-                                                callbacks=callbacks_list)
+        evaluationResults = self.model.evaluate(test_seq,
+                                                callbacks=callbacks_list,
+                                                max_queue_size=self.cfg['generator_max_queue_size'],
+                                                use_multiprocessing=self.cfg['generator_multiprocessing'],
+                                                workers=self.cfg['generator_workers']
+                                                )
 
         # Save the list of model metrics
         model_metrics = self.model.metrics_names
@@ -173,11 +175,10 @@ class NashNet:
 
         # Commutativity test
         if self.cfg["commutativity_test_permutations"] > 0:
-            average_mae = commutativity_test(tests_games=self.test_games,
-                                             test_eq=self.test_equilibria,
+            average_mae = commutativity_test(test_data_generator=test_seq,
                                              model=self.model,
-                                             permutation_number=self.cfg["commutativity_test_permutations"],
-                                             test_batch_size=self.cfg["test_batch_size"])
+                                             permutation_number=self.cfg["commutativity_test_permutations"]
+                                             )
 
             model_metrics += ['Commutativity average MAE']
             evaluationResults += [average_mae]
@@ -199,17 +200,22 @@ class NashNet:
         if not num_to_print:
             num_to_print = self.cfg["examples_to_print"]
 
-        # Load test data if not already created
-        if not (self.test_games.size and self.test_equilibria.size):
-            self.test_games, self.test_equilibria = loadTestData(self.cfg["test_games_file"],
-                                                                 self.cfg["test_equilibria_file"],
-                                                                 self.cfg["max_equilibria"], self.cfg["num_players"],
-                                                                 self.cfg["num_strategies"])
+            # Load list of test data files if not already created
+            if not self.test_files:
+                self.test_files = loadTestData(self.cfg["test_files_list"],
+                                               self.cfg["num_players"],
+                                               self.cfg["num_strategies"])
+
+        # Create the test data generator
+        test_seq = NashSequence(files_list=self.test_files,
+                                files_location=self.dataset_location,
+                                max_equilibria=self.cfg["max_equilibria"],
+                                normalize_input_data=self.cfg["normalize_input_data"],
+                                batch_size=self.cfg["test_batch_size"])
 
         # Print examples
         printExamples(numberOfExamples=num_to_print,
-                      testSamples=self.test_games,
-                      testEqs=self.test_equilibria,
+                      test_data_generator=test_seq,
                       nn_model=self.model,
                       examples_print_file=self.cfg["examples_print_file"],
                       pureStrategies_per_player=self.cfg["num_strategies"],
@@ -497,8 +503,7 @@ class NashNet:
         self.cfg["loss_type"] = config_parser.get(configSection, "loss_type")
         self.cfg["payoff_to_equilibrium_weight"] = config_parser.getfloat(configSection, "payoff_to_equilibrium_weight")
         self.cfg["enable_hydra"] = config_parser.getboolean(configSection, "enable_hydra")
-        self.cfg["test_games_file"] = config_parser.get(configSection, "test_games_file")
-        self.cfg["test_equilibria_file"] = config_parser.get(configSection, "test_equilibria_file")
+        self.cfg["test_files_list"] = config_parser.get(configSection, "test_files_list")
         self.cfg["training_history_file"] = config_parser.get(configSection, "training_history_file")
         self.cfg["test_results_file"] = config_parser.get(configSection, "test_results_file")
         self.cfg["examples_print_file"] = config_parser.get(configSection, "examples_print_file")
