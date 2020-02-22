@@ -168,10 +168,18 @@ class NashNet:
         # Save the list of model metrics
         model_metrics = self.model.metrics_names
 
-        # Print max epsilon
+        # Print max epsilon and remove the per-epoch epsilon
         if self.cfg["compute_epsilon"]:
+            # Add max epsilon to the results
             print('max_epsilon:', tf.get_static_value(epsilon_callback.logs['max_epsilon']))
             evaluationResults[-1] = tf.get_static_value(epsilon_callback.logs['max_epsilon'])
+
+            # Remove the per-epoch epsilon from the results
+            try:
+                evaluationResults.pop(model_metrics.index("epsilon"))
+                model_metrics.remove("epsilon")
+            except ValueError:
+                pass
 
         # Commutativity test
         if self.cfg["commutativity_test_permutations"] > 0:

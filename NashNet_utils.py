@@ -581,7 +581,8 @@ def build_monohead_model(num_players, pure_strategies_per_player, max_equilibria
                                                   computePayoff_function, num_players)]
     if compute_epsilon:
         metrics_list += [epsilon_approx(input_layer, pure_strategies_per_player, computePayoff_function, num_players, False),
-                           outperform_eq(input_layer, pure_strategies_per_player, computePayoff_function, num_players, False), max_epsilon]
+                         # outperform_eq(input_layer, pure_strategies_per_player, computePayoff_function, num_players, False),
+                         max_epsilon]
 
     # Compile the model
     model.compile(experimental_run_tf_function=False,
@@ -686,7 +687,7 @@ def build_hydra_model(num_players, pure_strategies_per_player, max_equilibria, o
     if compute_epsilon:
         metrics_list += [
             epsilon_approx(input_layer, pure_strategies_per_player, computePayoff_function, num_players, True),
-            outperform_eq(input_layer, pure_strategies_per_player, computePayoff_function, num_players, True),
+            # outperform_eq(input_layer, pure_strategies_per_player, computePayoff_function, num_players, True),
             max_epsilon]
 
     # Compile the model
@@ -894,6 +895,7 @@ def printExamples(numberOfExamples, test_data_generator, nn_model, examples_prin
         # Convert the numpy arrays to nested lists
         true_equilibria = [np.round(eq.astype(np.float), decimals=4).tolist() for eq in listOfTrueEquilibria]
         predicted_equilibria = np.round(predictedEq.astype(np.float), decimals=4).tolist()
+        current_example_game = [np.round(player_game.astype(np.float), decimals=4).tolist() for player_game in exampleGame[exampleCounter]]
 
         # Remove redundant elements from equilibrium arrays
         for eq in range(len(true_equilibria)):
@@ -902,9 +904,8 @@ def printExamples(numberOfExamples, test_data_generator, nn_model, examples_prin
         for eq in range(len(predicted_equilibria)):
             predicted_equilibria[eq] = [predicted_equilibria[eq][pl][: pureStrategies_per_player[pl]] for pl in range(num_players)]
 
-        printString = ("\n______________\nExample {}:\nTrue:\n" + "{}\n" * len(true_equilibria) + "\n\nPredicted: \n" + \
-                      "{}\n" * len(predicted_equilibria) + "\n\nLoss: {:.4f}\n") \
-            .format(*([exampleCounter + 1] + true_equilibria + predicted_equilibria + [K.get_value(loss)]))
+        printString = ("\n______________\nExample {}:\nGame:\n" + "{}\n" * len(current_example_game) + "\nTrue:\n" + "{}\n" * len(true_equilibria) + "\n\nPredicted: \n" + "{}\n" * len(predicted_equilibria) + "\n\nLoss: {:.4f}\n")\
+            .format(*([exampleCounter + 1] + current_example_game + true_equilibria + predicted_equilibria + [K.get_value(loss)]))
 
         if print_to_terminal:
             print(printString)
@@ -1031,7 +1032,7 @@ def hydra_epsilon_equilibrium(nashEq_predicted, nashEq_true, game, pureStrategie
 
         # Compute epsilon and possible payoff improvement
         epsilon_per_player.append(tf.reduce_max(tf.maximum(payoff_true[:, :, player] - approx_payoff_current_player[:, :, player], 0), axis=1))
-        outperform_eq_per_player.append(tf.math.greater(approx_payoff_current_player[:, :, player], payoff_true[:, :, player]))
+        outperform_eq_per_player.append(tf.reduce_all(tf.math.greater(approx_payoff_current_player[:, :, player], payoff_true[:, :, player]), axis=1))
 
     # Find the maximum epsilon for all players
     epsilon_stacked = tf.stack(epsilon_per_player, axis=1)
