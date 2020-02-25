@@ -1,11 +1,10 @@
 import numpy as np
 import tensorflow as tf
 import tensorflow.keras.backend as K
-import math, random
+import math
 import pandas as pd
 from sklearn import cluster
 import os
-import time
 
 # # ********************************
 # def GetTrainingDataFromNPY(data_file, labels_file):

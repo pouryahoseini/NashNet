@@ -10,7 +10,6 @@ import ast
 import sys
 import signal
 import os
-import gc
 
 # Suppress warnings. (To mute Nashpy's verbose warnings about degenerate games)
 warnings.filterwarnings("ignore")
