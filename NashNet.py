@@ -114,6 +114,10 @@ class NashNet:
         # Write the loss and metric values during the training and test time
         save_training_history(trainingHistory, self.cfg["training_history_file"])
 
+        # Load best-found weights if it is enabled
+        if self.cfg["use_best_weights"]:
+            self.model.load_weights(os.path.join('./Model/' + self.cfg["model_best_weights_file"] + '.h5'))
+
         # Indicate trained model is ready
         self.trained_model_loaded = True
 
@@ -125,7 +129,10 @@ class NashNet:
 
         # Load model weights if the model is not loaded yet
         if not self.trained_model_loaded:
-            self.model.load_weights(os.path.join('./Model/' + self.cfg["model_weights_file"] + '.h5'))
+            if self.cfg["use_best_weights"]:  # Use best weights in the training
+                self.model.load_weights(os.path.join('./Model/' + self.cfg["model_best_weights_file"] + '.h5'))
+            else:  # Use last weights in the training
+                self.model.load_weights(os.path.join('./Model/' + self.cfg["model_weights_file"] + '.h5'))
             self.trained_model_loaded = True
 
         # Recompile the model with epsilon computing support if it is enabled
@@ -538,6 +545,7 @@ class NashNet:
         self.cfg['generator_workers'] = config_parser.getint(configSection, "generator_workers")
         self.cfg["print_to_terminal"] = config_parser.getboolean(configSection, "print_to_terminal")
         self.cfg["save_interim_weights"] = config_parser.getboolean(configSection, "save_interim_weights")
+        self.cfg["use_best_weights"] = config_parser.getboolean(configSection, "use_best_weights")
 
         # Check input configurations
         if not (0 < self.cfg["validation_split"] < 1):
