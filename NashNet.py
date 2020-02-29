@@ -104,8 +104,7 @@ class NashNet:
                                          shuffle='batch',
                                          callbacks=callbacks_list,
                                          max_queue_size=self.cfg['generator_max_queue_size'],
-                                         use_multiprocessing=self.cfg['generator_multiprocessing'],
-                                         workers=self.cfg['generator_workers']
+                                         use_multiprocessing=self.cfg['generator_multiprocessing']
                                          )
 
         # Save the model
@@ -168,8 +167,7 @@ class NashNet:
         evaluationResults = self.model.evaluate(test_seq,
                                                 callbacks=callbacks_list,
                                                 max_queue_size=self.cfg['generator_max_queue_size'],
-                                                use_multiprocessing=self.cfg['generator_multiprocessing'],
-                                                workers=self.cfg['generator_workers']
+                                                use_multiprocessing=self.cfg['generator_multiprocessing']
                                                 )
 
         # Save the list of model metrics
@@ -542,7 +540,6 @@ class NashNet:
         self.cfg['save_test_data'] = config_parser.getboolean(configSection, "save_test_data")
         self.cfg['generator_max_queue_size'] = config_parser.getint(configSection, "generator_max_queue_size")
         self.cfg['generator_multiprocessing'] = config_parser.getboolean(configSection, "generator_multiprocessing")
-        self.cfg['generator_workers'] = config_parser.getint(configSection, "generator_workers")
         self.cfg["print_to_terminal"] = config_parser.getboolean(configSection, "print_to_terminal")
         self.cfg["save_interim_weights"] = config_parser.getboolean(configSection, "save_interim_weights")
         self.cfg["use_best_weights"] = config_parser.getboolean(configSection, "use_best_weights")

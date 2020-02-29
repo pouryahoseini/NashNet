@@ -93,8 +93,8 @@ class NashSequence(Sequence):
 
         # Load samples from f1 - This will always be done.
         if self.last_file_index != f1_idx:
-            self.g = np.load(os.path.join(self.files_location, self.game_files[f1_idx]))
-            self.e = np.load(os.path.join(self.files_location, self.equilibria_files[f1_idx]))
+            self.g = np.load(os.path.join(self.files_location, self.game_files[self.indices[f1_idx]]))
+            self.e = np.load(os.path.join(self.files_location, self.equilibria_files[self.indices[f1_idx]]))
             self.last_file_index = f1_idx
 
         # If lower > upper, then two files needed
@@ -115,8 +115,8 @@ class NashSequence(Sequence):
                 self.y[0:remainder] = self.e[lower: self.file_len]
 
                 # Load f2
-                self.g = np.load(os.path.join(self.files_location, self.game_files[f2_idx]))
-                self.e = np.load(os.path.join(self.files_location, self.equilibria_files[f2_idx]))
+                self.g = np.load(os.path.join(self.files_location, self.game_files[self.indices[f2_idx]]))
+                self.e = np.load(os.path.join(self.files_location, self.equilibria_files[self.indices[f2_idx]]))
                 self.last_file_index = f2_idx
 
                 # Assign the rest of the values to x and y

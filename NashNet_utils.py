@@ -42,7 +42,7 @@ def MSE(nashEq_true, nashEq_pred):
 
     # Compute the weight for the final result to recompense the replacement of nans with zeros and its effect
     # on the averaging
-    nan_count = tf.reduce_sum(tf.cast(tf.logical_not(tf.greater(nashEq_true[0][0], -1)), tf.int32))
+    nan_count = tf.reduce_sum(tf.cast(tf.math.is_nan(nashEq_true[0][0]), tf.int32))
     eq_n_elements = tf.size(nashEq_true[0][0])
     compensation_factor = tf.cast(eq_n_elements / (eq_n_elements - nan_count), tf.float32)
 
@@ -79,7 +79,7 @@ def hydra_oneSided_MSE(nashEq_proposer, nashEq_proposed):
 
     # Compute the weight for the final result to recompense the replacement of nans with zeros and its effect
     # on the averaging
-    nan_count = tf.reduce_sum(tf.cast(tf.logical_not(tf.greater(nashEq_proposer[0][0] + nashEq_proposed[0][0], -1)), tf.int32))
+    nan_count = tf.reduce_sum(tf.cast(tf.math.is_nan(nashEq_proposer[0][0] + nashEq_proposed[0][0]), tf.int32))
     eq_n_elements = tf.size(nashEq_proposer[0][0])
     compensation_factor = tf.cast(eq_n_elements / (eq_n_elements - nan_count), tf.float32)
 
@@ -272,7 +272,7 @@ def payoff_Eq_MSE(game, pureStrategies_perPlayer, nashEq_true, nashEq_pred, comp
 
     # Compute the weight for the final result to recompense the replacement of nans with zeros and its effect
     # on the averaging
-    nan_count = tf.reduce_sum(tf.cast(tf.logical_not(tf.greater(nashEq_true[0][0], -1)), tf.int32))
+    nan_count = tf.reduce_sum(tf.cast(tf.math.is_nan(nashEq_true[0][0]), tf.int32))
     eq_n_elements = tf.size(nashEq_true[0][0])
     compensation_factor = tf.cast(eq_n_elements / (eq_n_elements - nan_count), tf.float32)
 
@@ -434,7 +434,7 @@ def hydra_oneSided_payoff_Eq_MSE(nashEq_proposer, nashEq_proposed, game, pureStr
 
     # Compute the weight for the final result to recompense the replacement of nans with zeros and its effect
     # on the averaging
-    nan_count = tf.reduce_sum(tf.cast(tf.logical_not(tf.greater(nashEq_proposer[0][0] + nashEq_proposed[0][0], -1)), tf.int32))
+    nan_count = tf.reduce_sum(tf.cast(tf.math.is_nan(nashEq_proposer[0][0] + nashEq_proposed[0][0]), tf.int32))
     eq_n_elements = tf.size(nashEq_proposer[0][0])
     compensation_factor = tf.cast(eq_n_elements / (eq_n_elements - nan_count), tf.float32)
 
@@ -1198,7 +1198,7 @@ def commutativity_test(test_data_generator, model, permutation_number):
     print('Starting the commutativity test. Number of random permutations: ' + str(permutation_number) + note_string)
 
     # Compute the weight to compensate for the zeros replaced in place of nan values
-    nan_count = tf.reduce_sum(tf.cast(tf.logical_not(tf.greater(test_eq[0][0], -1)), tf.int32))
+    nan_count = tf.reduce_sum(tf.cast(tf.math.is_nan(test_eq[0][0]), tf.int32))
     eq_n_elements = tf.size(test_eq[0][0])
     compensation_factor = tf.cast(eq_n_elements / (eq_n_elements - nan_count), tf.float32)
 
