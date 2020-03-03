@@ -1171,7 +1171,6 @@ def commutativity_test(test_data_generator, model, permutation_number):
     :param test_data_generator: A generator of test games
     :param model: The trained model
     :param permutation_number: Number of random permutations to try
-    :param test_batch_size: Batch size of test data
     :return: Returns the average of mean absolute errors after permutations in the players' strategies
     """
 
@@ -1182,11 +1181,11 @@ def commutativity_test(test_data_generator, model, permutation_number):
     number_of_batches = test_data_generator.__len__()
 
     # Get an initial test sample batch
-    tests_games, test_eq = test_data_generator.__getitem__(0)
+    test_games, test_eq = test_data_generator.__getitem__(0)
 
     # Find the maximum possible permutations
     max_perm = 1
-    for player_strategies in tests_games.shape[2:]:
+    for player_strategies in test_games.shape[2:]:
         max_perm *= math.factorial(player_strategies)
     if permutation_number > max_perm:
         note_string = '\nWarning: ' + str(permutation_number) + ' permutations requested, but maximum number of unique permutations is ' + str(max_perm)
@@ -1204,6 +1203,7 @@ def commutativity_test(test_data_generator, model, permutation_number):
 
     # Test different permutations
     average_mae = 0
+    indices = [None] * test_games.shape[1]
     for permute_no in range(permutation_number):
         # Print a message
         print('Starting permutation ' + str(permute_no + 1))
@@ -1212,15 +1212,16 @@ def commutativity_test(test_data_generator, model, permutation_number):
         mae = 0
         for current_batch in range(number_of_batches):
             # Read a batch of test data
-            tests_games, test_eq = test_data_generator.__getitem__(current_batch)
+            test_games, test_eq = test_data_generator.__getitem__(current_batch)
+            test_eq = tf.cast(tf.tile(tf.expand_dims(test_eq, axis=1), [1, tf.shape(test_eq)[1], 1, 1, 1]), tf.float32)
 
             # Save the original unpermuted games
-            original_tests_games = tests_games.copy()
+            original_tests_games = test_games.copy()
 
             # Permute the strategies for each player
             for idx, pl_strategies in enumerate(original_tests_games.shape[2:]):
-                indices = tuple(np.random.permutation(pl_strategies))
-                tests_games = np.take(tests_games, indices=indices, axis=(idx + 2))
+                indices[idx] = tuple(np.random.permutation(pl_strategies))
+                test_games = np.take(test_games, indices=indices[idx], axis=(idx + 2))
 
             # Predict the equilibrium for the original games
             original_eq = model.predict(original_tests_games)
@@ -1229,13 +1230,28 @@ def commutativity_test(test_data_generator, model, permutation_number):
             sample_number = original_tests_games.shape[0]
 
             # Predict the permuted game
-            new_eq = model.predict(tests_games)
+            new_eq = model.predict(test_games)
+
+            # Change the order of probabilities to account for shuffling in strategies in the input game
+            for player in range(new_eq.shape[2]):
+                new_eq[:, :, player, : original_tests_games.shape[2 + player]] = np.take(new_eq[:, :, player, : original_tests_games.shape[2 + player]], indices=indices[player], axis=2)
+
+            # print("\n\n\n\nOriginal Game:\n", repr(original_tests_games[0]), "\n\nGame:\n", repr(test_games[0]),
+            #       "\n\nTrue:\n",
+            #       test_eq_orig[0], "\n\n@@Indeices:", indices, "\nNew:\n", new_eq[0], "\n\n\nOld:\n", original_eq[0])
+
+            # Tile the predictions to find the min differences (correspondences) later
+            original_eq = tf.tile(tf.expand_dims(original_eq, axis=2), [1, 1, tf.shape(original_eq)[1], 1, 1])
+            new_eq = tf.tile(tf.expand_dims(new_eq, axis=1), [1, tf.shape(new_eq)[1], 1, 1, 1])
 
             # Compute the mean absolute difference
             absolute_error = tf.math.abs(original_eq - new_eq)
 
             # Replace the dummy outputs (in the case of asymmetric games) with zero
             absolute_error = tf.where(tf.math.is_nan(test_eq), tf.zeros_like(absolute_error), absolute_error)
+
+            # Find the min differences (correspondences) in the predicted equilibria
+            absolute_error = tf.reduce_min(tf.reduce_mean(absolute_error, axis=[3, 4]), axis=2)
 
             # Compute the average of absolute errors
             mae += tf.reduce_mean(absolute_error) * compensation_factor * sample_number
