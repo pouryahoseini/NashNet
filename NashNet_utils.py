@@ -580,8 +580,10 @@ def build_monohead_model(num_players, pure_strategies_per_player, max_equilibria
                                                   computePayoff_function, num_players)]
     if compute_epsilon:
         metrics_list += [epsilon_approx(input_layer, pure_strategies_per_player, computePayoff_function, num_players, False),
+                         delta_approx(input_layer, pure_strategies_per_player, computePayoff_function, num_players, False),
                          # outperform_eq(input_layer, pure_strategies_per_player, computePayoff_function, num_players, False),
-                         max_epsilon]
+                         max_epsilon,
+                         max_delta]
 
     # Compile the model
     model.compile(experimental_run_tf_function=False,
@@ -686,8 +688,10 @@ def build_hydra_model(num_players, pure_strategies_per_player, max_equilibria, o
     if compute_epsilon:
         metrics_list += [
             epsilon_approx(input_layer, pure_strategies_per_player, computePayoff_function, num_players, True),
+            delta_approx(input_layer, pure_strategies_per_player, computePayoff_function, num_players, True),
             # outperform_eq(input_layer, pure_strategies_per_player, computePayoff_function, num_players, True),
-            max_epsilon]
+            max_epsilon,
+            max_delta]
 
     # Compile the model
     model.compile(experimental_run_tf_function=False,
@@ -982,10 +986,103 @@ def clustering(pred, num_players, max_pureStrategies):
 
 # ********************************
 @tf.function
-def hydra_epsilon_equilibrium(nashEq_predicted, nashEq_true, game, pureStrategies_perPlayer,
-                                 computePayoff_function, num_players):
+def hydra_epsilon_equilibrium(nashEq_predicted, game, pureStrategies_perPlayer, computePayoff_function, num_players):
     """
     Function to compute the epsilon in an epsilon-equilibrium setting for the hydra model.
+    """
+
+    # Compute payoff of the predicted equilibria (shape: [batch, max_eq, players])
+    payoff_pred = computePayoff_function['computePayoff_2dBatch'](game, nashEq_predicted, pureStrategies_perPlayer, num_players)
+
+    # Unstack the predicted equilibria for each player
+    unstacked_list = tf.unstack(nashEq_predicted, axis=2, num=num_players)
+
+    # Iterate over all players
+    max_regret = 0
+    for player in range(num_players):
+
+        player_max_regret = 0
+
+        # Iterate over all the pure strategies of a player
+        for strategy in range(pureStrategies_perPlayer[player]):
+
+            # Replace the prediction for the current player with a one-hot pure strategy corresponding to the current strategy
+            pure_strategy_profile = tf.zeros_like(unstacked_list[player])
+            pure_strategy_profile[:, :, strategy] = tf.ones_like(pure_strategy_profile[:, :, strategy])
+            unstacked_list[player] = pure_strategy_profile
+            pure_play = tf.stack(unstacked_list, axis=2)
+
+            # Compute payoff of the predicted equilibria for other players and the current strategy for the current player (shape: [batch, max_eq, players])
+            payoff = computePayoff_function['computePayoff_2dBatch'](game, pure_play, pureStrategies_perPlayer, num_players)
+
+            # Compute the payoff difference for the current player
+            payoff_regret = payoff[:, :, player] - payoff_pred[:, :, player]
+            payoff_regret = tf.maximum(payoff_regret, 0)
+
+            # Save the maximum payoff regret for the current player
+            player_max_regret = tf.maximum(player_max_regret, payoff_regret)
+
+        # Save the maximum regret for all players
+        max_regret = tf.maximum(max_regret, player_max_regret)
+
+    # Find the maximum epsilon for all the predictions for any of the samples in the batch (axes = 0, 1)
+    epsilon = tf.reduce_max(max_regret)
+
+    return epsilon
+
+
+# ********************************
+@tf.function
+def epsilon_equilibrium(game, pureStrategies_perPlayer, nashEq_pred, computePayoff_function, num_players):
+    """
+    Function to compute the epsilon in an epsilon-equilibrium setting.
+    """
+
+    # Compute payoff of the predicted equilibria (shape: [batch, players])
+    payoff_pred = computePayoff_function['computePayoff'](game, nashEq_pred, pureStrategies_perPlayer, num_players)
+
+    # Unstack the predicted equilibria for each player
+    unstacked_list = tf.unstack(nashEq_pred, axis=1, num=num_players)
+
+    # Iterate over all players
+    max_regret = 0
+    for player in range(num_players):
+
+        player_max_regret = 0
+
+        # Iterate over all the pure strategies of a player
+        for strategy in range(pureStrategies_perPlayer[player]):
+
+            # Replace the prediction for the current player with a one-hot pure strategy corresponding to the current strategy
+            pure_strategy_profile = tf.zeros_like(unstacked_list[player])
+            pure_strategy_profile[:, strategy] = tf.ones_like(pure_strategy_profile[:, strategy])
+            unstacked_list[player] = pure_strategy_profile
+            pure_play = tf.stack(unstacked_list, axis=1)
+
+            # Compute payoff of the predicted equilibria for other players and the current strategy for the current player (shape: [batch, players])
+            payoff = computePayoff_function['computePayoff'](game, pure_play, pureStrategies_perPlayer, num_players)
+
+            # Compute the payoff difference for the current player
+            payoff_regret = payoff[:, player] - payoff_pred[:, player]
+            payoff_regret = tf.maximum(payoff_regret, 0)
+
+            # Save the maximum payoff regret for the current player
+            player_max_regret = tf.maximum(player_max_regret, payoff_regret)
+
+        # Save the maximum regret for all players
+        max_regret = tf.maximum(max_regret, player_max_regret)
+
+    # Find the maximum epsilon for the samples in the batch
+    epsilon = tf.reduce_max(max_regret)
+
+    return epsilon
+
+# ********************************
+@tf.function
+def hydra_delta_equilibrium(nashEq_predicted, nashEq_true, game, pureStrategies_perPlayer,
+                                 computePayoff_function, num_players):
+    """
+    Function to compute the delta (regret of not playing equilibrium strategy while others play that) in a hydra network.
     """
 
     # Create a row-wise meshgrid of predicted equilibria for each sample in the batch by adding a new dimension and
@@ -1018,7 +1115,7 @@ def hydra_epsilon_equilibrium(nashEq_predicted, nashEq_true, game, pureStrategie
 
     # Compute the difference in payoff a player when their strategy in true equilibrium is replaced by the predicted
     # strategy (shape: A list with size of players with each element [batch])
-    epsilon_per_player = []
+    delta_per_player = []
     outperform_eq_per_player = []
     for player in range(num_players):
         # Replace the prediction for a player on the true equilibrium
@@ -1029,26 +1126,26 @@ def hydra_epsilon_equilibrium(nashEq_predicted, nashEq_true, game, pureStrategie
         # Compute payoff for the modified equilibria
         approx_payoff_current_player = computePayoff_function['computePayoff_2dBatch'](game, approx_on_true, pureStrategies_perPlayer, num_players)
 
-        # Compute epsilon and possible payoff improvement
-        epsilon_per_player.append(tf.reduce_max(tf.maximum(payoff_true[:, :, player] - approx_payoff_current_player[:, :, player], 0), axis=1))
+        # Compute delta and possible payoff improvement
+        delta_per_player.append(tf.reduce_max(tf.maximum(payoff_true[:, :, player] - approx_payoff_current_player[:, :, player], 0), axis=1))
         outperform_eq_per_player.append(tf.reduce_all(tf.math.greater(approx_payoff_current_player[:, :, player], payoff_true[:, :, player]), axis=1))
 
-    # Find the maximum epsilon for all players
-    epsilon_stacked = tf.stack(epsilon_per_player, axis=1)
-    epsilon = tf.reduce_max(epsilon_stacked)
+    # Find the maximum delta for all players
+    delta_stacked = tf.stack(delta_per_player, axis=1)
+    delta = tf.reduce_max(delta_stacked)
 
     # Also find if any equilibrium better than the classical methods (true equilibrium) found
     outperform_stacked = tf.stack(outperform_eq_per_player, axis=1)
     outperform_no = tf.math.count_nonzero(tf.reduce_all(outperform_stacked, axis=1))
 
-    return epsilon, outperform_no
+    return delta, outperform_no
 
 
 # ********************************
 @tf.function
-def epsilon_equilibrium(game, pureStrategies_perPlayer, nashEq_true, nashEq_pred, computePayoff_function, num_players):
+def delta_equilibrium(game, pureStrategies_perPlayer, nashEq_true, nashEq_pred, computePayoff_function, num_players):
     """
-    Function to compute the epsilon in an epsilon-equilibrium setting.
+    Function to compute the delta (regret of not playing equilibrium strategy while others play that).
     """
 
     # Compute error
@@ -1070,7 +1167,7 @@ def epsilon_equilibrium(game, pureStrategies_perPlayer, nashEq_true, nashEq_pred
 
     # Compute the difference in payoff a player when their strategy in true equilibrium is replaced by the predicted
     # strategy (shape: A list with size of players with each element [batch])
-    epsilon_per_player = []
+    delta_per_player = []
     outperform_eq_per_player = []
     for player in range(num_players):
         # Replace the prediction for a player on the true equilibrium
@@ -1081,19 +1178,19 @@ def epsilon_equilibrium(game, pureStrategies_perPlayer, nashEq_true, nashEq_pred
         # Compute payoff for the modified equilibrium
         approx_payoff_current_player = computePayoff_function['computePayoff'](game, approx_on_true, pureStrategies_perPlayer, num_players)
 
-        # Compute epsilon and possible payoff improvement
-        epsilon_per_player.append(tf.maximum(payoff_true[:, player] - approx_payoff_current_player[:, player], 0))
+        # Compute delta and possible payoff improvement
+        delta_per_player.append(tf.maximum(payoff_true[:, player] - approx_payoff_current_player[:, player], 0))
         outperform_eq_per_player.append(tf.math.greater(approx_payoff_current_player[:, player], payoff_true[:, player]))
 
-    # Find the maximum epsilon for all players
-    epsilon_stacked = tf.stack(epsilon_per_player, axis=1)
-    epsilon = tf.reduce_max(epsilon_stacked)
+    # Find the maximum delta for all players
+    delta_stacked = tf.stack(delta_per_player, axis=1)
+    delta = tf.reduce_max(delta_stacked)
 
     # Also find if any equilibrium better than the classical methods (true equilibrium) found
     outperform_stacked = tf.stack(outperform_eq_per_player, axis=1)
     outperform_no = tf.math.count_nonzero(tf.reduce_all(outperform_stacked, axis=1))
 
-    return epsilon, outperform_no
+    return delta, outperform_no
 
 
 # ********************************
@@ -1104,15 +1201,31 @@ def epsilon_approx(game, pureStrategies_perPlayer, computePayoff_function, num_p
 
     if hydra_enabled:
         def epsilon(nashEq_true, nashEq_predicted):
-            epsilon_, _ = hydra_epsilon_equilibrium(nashEq_predicted, nashEq_true, game, pureStrategies_perPlayer, computePayoff_function, num_players)
+            epsilon_, _ = hydra_epsilon_equilibrium(nashEq_predicted, game, pureStrategies_perPlayer, computePayoff_function, num_players)
             return epsilon_
     else:
         def epsilon(nashEq_true, nashEq_predicted):
-            epsilon_, _ = epsilon_equilibrium(game, pureStrategies_perPlayer, nashEq_true, nashEq_predicted, computePayoff_function, num_players)
+            epsilon_, _ = epsilon_equilibrium(game, pureStrategies_perPlayer, nashEq_predicted, computePayoff_function, num_players)
             return epsilon_
 
     return epsilon
 
+# ********************************
+def delta_approx(game, pureStrategies_perPlayer, computePayoff_function, num_players, hydra_enabled):
+    """
+    Function to find delta by selecting the proper function to call.
+    """
+
+    if hydra_enabled:
+        def delta(nashEq_true, nashEq_predicted):
+            delta_, _ = hydra_delta_equilibrium(nashEq_predicted, nashEq_true, game, pureStrategies_perPlayer, computePayoff_function, num_players)
+            return delta_
+    else:
+        def delta(nashEq_true, nashEq_predicted):
+            delta_, _ = delta_equilibrium(game, pureStrategies_perPlayer, nashEq_true, nashEq_predicted, computePayoff_function, num_players)
+            return delta_
+
+    return delta
 
 # ********************************
 def outperform_eq(game, pureStrategies_perPlayer, computePayoff_function, num_players, hydra_enabled):
@@ -1122,11 +1235,11 @@ def outperform_eq(game, pureStrategies_perPlayer, computePayoff_function, num_pl
 
     if hydra_enabled:
         def outperform_no(nashEq_true, nashEq_predicted):
-            _, outperform_no_ = hydra_epsilon_equilibrium(nashEq_predicted, nashEq_true, game, pureStrategies_perPlayer, computePayoff_function, num_players)
+            _, outperform_no_ = hydra_delta_equilibrium(nashEq_predicted, nashEq_true, game, pureStrategies_perPlayer, computePayoff_function, num_players)
             return outperform_no_
     else:
         def outperform_no(nashEq_true, nashEq_predicted):
-            _, outperform_no_ = epsilon_equilibrium(game, pureStrategies_perPlayer, nashEq_true, nashEq_predicted, computePayoff_function, num_players)
+            _, outperform_no_ = delta_equilibrium(game, pureStrategies_perPlayer, nashEq_true, nashEq_predicted, computePayoff_function, num_players)
             return outperform_no_
 
     return outperform_no
@@ -1135,34 +1248,45 @@ def outperform_eq(game, pureStrategies_perPlayer, computePayoff_function, num_pl
 # ********************************
 class EpsilonCallback(tf.keras.callbacks.Callback):
     """
-    Class to save model and change learning rate during the training
+    Class to keep the maximum epsilon and delta in the whole test run.
     """
     
     def __init__(self):
         # Learning Rate Scheduler Variables
         self.epsilon = 0
+        self.delta = 0
         self.logs = None
 
     def on_batch_end(self, batch, logs={}):
         self.epsilon = tf.maximum(logs.get('epsilon'), self.epsilon)
+        self.delta = tf.maximum(logs.get('delta'), self.delta)
         logs['max_epsilon'] = self.epsilon
+        logs['max_delta'] = self.delta
 
     def on_epoch_end(self, epoch, logs=None):
         logs['max_epsilon'] = self.epsilon
+        logs['max_delta'] = self.delta
         logs.pop("val_max_epsilon", None)
+        logs.pop("val_max_delta", None)
 
     def on_test_batch_end(self, batch, logs=None):
         self.epsilon = tf.maximum(logs.get('epsilon'), self.epsilon)
+        self.delta = tf.maximum(logs.get('delta'), self.delta)
         logs['max_epsilon'] = self.epsilon
+        logs['max_delta'] = self.delta
         self.logs = logs
 
     def on_test_end(self, logs=None):
         self.logs['max_epsilon'] = self.epsilon
+        self.logs['max_delta'] = self.delta
 
 
 def max_epsilon(*argv):
     return 0
 
+
+def max_delta(*argv):
+    return 0
 
 # ********************************
 def commutativity_test(test_data_generator, model, permutation_number):
