@@ -998,17 +998,19 @@ def hydra_epsilon_equilibrium(nashEq_predicted, game, pureStrategies_perPlayer, 
     unstacked_list = tf.unstack(nashEq_predicted, axis=2, num=num_players)
 
     # Iterate over all players
-    max_regret = 0
+    max_regret = 0.0
     for player in range(num_players):
 
-        player_max_regret = 0
+        player_max_regret = 0.0
 
         # Iterate over all the pure strategies of a player
         for strategy in range(pureStrategies_perPlayer[player]):
 
             # Replace the prediction for the current player with a one-hot pure strategy corresponding to the current strategy
             pure_strategy_profile = tf.zeros_like(unstacked_list[player])
-            pure_strategy_profile[:, :, strategy] = tf.ones_like(pure_strategy_profile[:, :, strategy])
+            pure_strategy_profile = tf.unstack(pure_strategy_profile, axis=2)
+            pure_strategy_profile[strategy] = tf.ones_like(pure_strategy_profile[strategy])
+            pure_strategy_profile = tf.stack(pure_strategy_profile, axis=2)
             unstacked_list[player] = pure_strategy_profile
             pure_play = tf.stack(unstacked_list, axis=2)
 
@@ -1055,7 +1057,9 @@ def epsilon_equilibrium(game, pureStrategies_perPlayer, nashEq_pred, computePayo
 
             # Replace the prediction for the current player with a one-hot pure strategy corresponding to the current strategy
             pure_strategy_profile = tf.zeros_like(unstacked_list[player])
-            pure_strategy_profile[:, strategy] = tf.ones_like(pure_strategy_profile[:, strategy])
+            pure_strategy_profile = tf.unstack(pure_strategy_profile, axis=1)
+            pure_strategy_profile[strategy] = tf.ones_like(pure_strategy_profile[strategy])
+            pure_strategy_profile = tf.stack(pure_strategy_profile, axis=1)
             unstacked_list[player] = pure_strategy_profile
             pure_play = tf.stack(unstacked_list, axis=1)
 
@@ -1201,11 +1205,11 @@ def epsilon_approx(game, pureStrategies_perPlayer, computePayoff_function, num_p
 
     if hydra_enabled:
         def epsilon(nashEq_true, nashEq_predicted):
-            epsilon_, _ = hydra_epsilon_equilibrium(nashEq_predicted, game, pureStrategies_perPlayer, computePayoff_function, num_players)
+            epsilon_ = hydra_epsilon_equilibrium(nashEq_predicted, game, pureStrategies_perPlayer, computePayoff_function, num_players)
             return epsilon_
     else:
         def epsilon(nashEq_true, nashEq_predicted):
-            epsilon_, _ = epsilon_equilibrium(game, pureStrategies_perPlayer, nashEq_predicted, computePayoff_function, num_players)
+            epsilon_ = epsilon_equilibrium(game, pureStrategies_perPlayer, nashEq_predicted, computePayoff_function, num_players)
             return epsilon_
 
     return epsilon
