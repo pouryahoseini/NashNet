@@ -995,7 +995,7 @@ def hydra_epsilon_equilibrium(nashEq_predicted, game, pureStrategies_perPlayer, 
     payoff_pred = computePayoff_function['computePayoff_2dBatch'](game, nashEq_predicted, pureStrategies_perPlayer, num_players)
 
     # Unstack the predicted equilibria for each player
-    unstacked_list = tf.unstack(nashEq_predicted, axis=2, num=num_players)
+    unstacked_predicted_eq = tf.unstack(nashEq_predicted, axis=2, num=num_players)
 
     # Iterate over all players
     max_regret = 0.0
@@ -1007,12 +1007,13 @@ def hydra_epsilon_equilibrium(nashEq_predicted, game, pureStrategies_perPlayer, 
         for strategy in range(pureStrategies_perPlayer[player]):
 
             # Replace the prediction for the current player with a one-hot pure strategy corresponding to the current strategy
-            pure_strategy_profile = tf.zeros_like(unstacked_list[player])
+            pure_strategy_profile = tf.zeros_like(unstacked_predicted_eq[player])
             pure_strategy_profile = tf.unstack(pure_strategy_profile, axis=2)
             pure_strategy_profile[strategy] = tf.ones_like(pure_strategy_profile[strategy])
             pure_strategy_profile = tf.stack(pure_strategy_profile, axis=2)
-            unstacked_list[player] = pure_strategy_profile
-            pure_play = tf.stack(unstacked_list, axis=2)
+            deviated_strategy = unstacked_predicted_eq.copy()
+            deviated_strategy[player] = pure_strategy_profile
+            pure_play = tf.stack(deviated_strategy, axis=2)
 
             # Compute payoff of the predicted equilibria for other players and the current strategy for the current player (shape: [batch, max_eq, players])
             payoff = computePayoff_function['computePayoff_2dBatch'](game, pure_play, pureStrategies_perPlayer, num_players)
@@ -1044,7 +1045,7 @@ def epsilon_equilibrium(game, pureStrategies_perPlayer, nashEq_pred, computePayo
     payoff_pred = computePayoff_function['computePayoff'](game, nashEq_pred, pureStrategies_perPlayer, num_players)
 
     # Unstack the predicted equilibria for each player
-    unstacked_list = tf.unstack(nashEq_pred, axis=1, num=num_players)
+    unstacked_predicted_eq = tf.unstack(nashEq_pred, axis=1, num=num_players)
 
     # Iterate over all players
     max_regret = 0
@@ -1056,12 +1057,13 @@ def epsilon_equilibrium(game, pureStrategies_perPlayer, nashEq_pred, computePayo
         for strategy in range(pureStrategies_perPlayer[player]):
 
             # Replace the prediction for the current player with a one-hot pure strategy corresponding to the current strategy
-            pure_strategy_profile = tf.zeros_like(unstacked_list[player])
+            pure_strategy_profile = tf.zeros_like(unstacked_predicted_eq[player])
             pure_strategy_profile = tf.unstack(pure_strategy_profile, axis=1)
             pure_strategy_profile[strategy] = tf.ones_like(pure_strategy_profile[strategy])
             pure_strategy_profile = tf.stack(pure_strategy_profile, axis=1)
-            unstacked_list[player] = pure_strategy_profile
-            pure_play = tf.stack(unstacked_list, axis=1)
+            deviated_strategy = unstacked_predicted_eq.copy()
+            deviated_strategy[player] = pure_strategy_profile
+            pure_play = tf.stack(deviated_strategy, axis=1)
 
             # Compute payoff of the predicted equilibria for other players and the current strategy for the current player (shape: [batch, players])
             payoff = computePayoff_function['computePayoff'](game, pure_play, pureStrategies_perPlayer, num_players)
