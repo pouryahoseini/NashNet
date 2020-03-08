@@ -1,12 +1,10 @@
-import os, configparser, ast
+import configparser, ast
 import random
-import tensorflow as tf
 import tensorflow.keras as keras
-import numpy as np
-import pickle
 from Sequence_Generator import *
 from NashNet_utils import *
 import logging
+from Test_Metrics import epsilon_test, commutativity_test
 
 
 # ********************************
@@ -56,10 +54,8 @@ class NashNet:
 
         # Decide on the training, validation, and test data lists of files
         if self.cfg["rewrite_saved_test_data_if_model_weights_given"] or (not self.weights_initialized):
-            training_files, validation_files, self.test_files = self.list_files(num_players=self.cfg["num_players"],
-                                                                           num_strategies=self.cfg["num_strategies"],
-                                                                           validation_split=self.cfg["validation_split"],
-                                                                           test_split=self.cfg["test_split"])
+            training_files, validation_files, self.test_files = self.list_files(validation_split=self.cfg["validation_split"],
+                                                                                test_split=self.cfg["test_split"])
 
         # Save the list of test files
         if self.cfg['save_test_data']:
@@ -83,9 +79,6 @@ class NashNet:
                                                           save_weights_only=True,
                                                           mode='min',
                                                           save_freq='epoch')]
-
-        # if self.cfg["compute_epsilon"]:
-        #     callbacks_list += [EpsilonCallback()]
 
         # Train the model
         seq = NashSequence(files_list=training_files,
@@ -134,12 +127,6 @@ class NashNet:
                 self.model.load_weights(os.path.join('./Model/' + self.cfg["model_weights_file"] + '.h5'))
             self.trained_model_loaded = True
 
-        # Recompile the model with epsilon computing support if it is enabled
-        if self.cfg["compute_epsilon"]:
-            model_weights = self.model.get_weights()
-            self.build_model(test_mode=True)
-            self.model.set_weights(model_weights)
-
         # If no num_to_print is provided, default to setting in cfg
         if not num_to_print:
             num_to_print = self.cfg["examples_to_print"]
@@ -159,9 +146,6 @@ class NashNet:
 
         # Create the list of callbacks
         callbacks_list = []
-        if self.cfg["compute_epsilon"]:
-            epsilon_callback = EpsilonCallback()
-            callbacks_list += [epsilon_callback]
 
         # Test the trained model
         evaluationResults = self.model.evaluate(test_seq,
@@ -175,18 +159,19 @@ class NashNet:
 
         # Print max epsilon and remove the per-epoch epsilon
         if self.cfg["compute_epsilon"]:
-            # Add max epsilon and max delta to the results
-            print('max_epsilon:', tf.get_static_value(epsilon_callback.logs['max_epsilon']))
-            print('max_delta:', tf.get_static_value(epsilon_callback.logs['max_delta']))
-            evaluationResults[-2] = tf.get_static_value(epsilon_callback.logs['max_epsilon'])
-            evaluationResults[-1] = tf.get_static_value(epsilon_callback.logs['max_delta'])
+            max_epsilon, max_delta, mean_epsilon, mean_delta = epsilon_test(
+                test_data_generator=test_seq,
+                model=self.model,
+                pureStrategies_perPlayer=self.cfg["num_strategies"],
+                num_players=self.cfg["num_players"],
+                lossType=self.cfg['loss_type'],
+                payoffLoss_type=self.cfg['payoff_loss_type'],
+                hydra_enabled=self.cfg["enable_hydra"])
 
-            # # Remove the per-epoch epsilon from the results
-            # try:
-            #     evaluationResults.pop(model_metrics.index("epsilon"))
-            #     model_metrics.remove("epsilon")
-            # except ValueError:
-            #     pass
+            # Add max epsilon and max delta to the results
+            print('max_epsilon: ', max_epsilon, '\nmax_delta: ', max_delta, '\nmean_epsilon: ', mean_epsilon, '\nmean_delta: ', mean_delta)
+            model_metrics += ['max_epsilon', 'mean_epsilon', 'max_delta', 'mean_delta']
+            evaluationResults += [max_epsilon, mean_epsilon, max_delta, mean_delta]
 
         # Commutativity test
         if self.cfg["commutativity_test_permutations"] > 0:
@@ -244,94 +229,6 @@ class NashNet:
                       )
 
     # ******
-    # def load_datasets(self):
-    #     """
-    #     Function to read the game and equilibria data from dataset files.
-    #     The input argument dataset_files should be an array (list, tuple, etc.) of arrays.
-    #     Each inner array is a pair of (game_file, equilibrium_file).
-    #     This function returns the games and equilibria in two separate numpy arrays.
-    #     """
-    #
-    #     # Set where to look for the dataset files
-    #     dataset_directory = './Datasets/' + str(self.cfg["num_players"]) + 'P/' + str(self.cfg["num_strategies"][0])
-    #     for strategy in self.cfg["num_strategies"][1:]:
-    #         dataset_directory += 'x' + str(strategy)
-    #     dataset_directory += '/'
-    #
-    #     if not os.path.isdir(dataset_directory):
-    #         print('\n\nError: The dataset directory does not exist.\n\n')
-    #         exit()
-    #
-    #     # List the file name lists of all different types of datasets
-    #     datasetTypes = [self.cfg['general_dataset_files'], self.cfg['mixed_only_dataset_files'],
-    #                     self.cfg['group_only_dataset_files'], self.cfg['mixed_group_only_dataset_files']]
-    #     dataset_typeNames = ['general_dataset_files', 'mixed_only_dataset_files', 'group_only_dataset_files',
-    #                          'mixed_group_only_dataset_files']
-    #
-    #     # Read the dataset files
-    #     firstTime = True
-    #     for typeNumber, dataset_files in enumerate(datasetTypes):
-    #         if len(dataset_files) > 0:
-    #             firstDataset = dataset_files[0]
-    #             sampleGames_currentType, sampleEquilibria_currentType = GetTrainingDataFromNPY(
-    #                 dataset_directory + firstDataset[0] + '.npy', dataset_directory + firstDataset[1] + '.npy')
-    #
-    #             for currentDataset in dataset_files[1:]:
-    #                 current_sampleGames, current_sampleEquilibria = GetTrainingDataFromNPY(
-    #                     dataset_directory + currentDataset[0] + '.npy', dataset_directory + currentDataset[1] + '.npy')
-    #                 sampleGames_currentType = np.append(sampleGames_currentType, current_sampleGames, axis=0)
-    #                 sampleEquilibria_currentType = np.append(sampleEquilibria_currentType, current_sampleEquilibria,
-    #                                                          axis=0)
-    #
-    #             if firstTime:
-    #                 sampleGames = np.empty(
-    #                     shape=(0, self.cfg["num_players"]) + tuple(self.cfg["num_strategies"]))
-    #                 sampleEquilibria = np.empty(shape=(0, sampleEquilibria_currentType.shape[1],
-    #                                                    self.cfg["num_players"], max(self.cfg["num_strategies"])))
-    #                 firstTime = False
-    #
-    #             # Extract the requested number of samples and combine the arrays of different types
-    #             if self.cfg['dataset_types_quota'][typeNumber] > sampleGames_currentType.shape[0]:
-    #                 raise Exception('\nThe requested quota for ' + dataset_typeNames[
-    #                     typeNumber] + ' is more than the samples in the dataset files provided.\n')
-    #             else:
-    #                 sampleGames = np.append(sampleGames,
-    #                                         sampleGames_currentType[: self.cfg['dataset_types_quota'][typeNumber]], axis=0)
-    #                 sampleEquilibria = np.append(sampleEquilibria, sampleEquilibria_currentType[
-    #                                                                : self.cfg['dataset_types_quota'][typeNumber]], axis=0)
-    #         elif self.cfg['dataset_types_quota'][typeNumber] > 0:
-    #             raise Exception('\nThe requested quota for ' + dataset_typeNames[
-    #                 typeNumber] + ' is more than zero, but no dataset files provided.\n')
-    #
-    #     # Shuffle the dataset arrays
-    #     sampleGames, sampleEquilibria = unisonShuffle(sampleGames, sampleEquilibria)
-    #
-    #     # Limit the number of true equilibria for each sample game if they are more than max_equilibria
-    #     if self.cfg["max_equilibria"] < sampleEquilibria.shape[1]:
-    #         sampleEquilibria = sampleEquilibria[:, 0: self.cfg["max_equilibria"], :, :]
-    #     elif self.cfg["max_equilibria"] > sampleEquilibria.shape[1]:
-    #         raise Exception(
-    #             '\nmax_equilibria is larger than the number of per sample true equilibria in the provided dataset.\n')
-    #
-    #     # Normalize if set to do so
-    #     if self.cfg["normalize_input_data"]:
-    #         axes_except_zero = tuple([ax for ax in range(1, len(sampleGames.shape))])
-    #         scalar_dim_except_zero = (sampleGames.shape[0],) + (1,) * (len(sampleGames.shape) - 1)
-    #         sampleGames = (sampleGames - np.reshape(np.min(sampleGames, axis=axes_except_zero), scalar_dim_except_zero)) / \
-    #                       np.reshape(np.max(sampleGames, axis=axes_except_zero) - np.min(sampleGames, axis=axes_except_zero), scalar_dim_except_zero)
-    #
-    #     # Extract the training and test data
-    #     sample_no = sampleGames.shape[0]
-    #     trainingSamples_no = int((1 - self.cfg["test_split"]) * sample_no)
-    #
-    #     training_games = sampleGames[: trainingSamples_no]
-    #     training_equilibria = sampleEquilibria[: trainingSamples_no]
-    #     test_games = sampleGames[trainingSamples_no: sample_no]
-    #     test_equilibria = sampleEquilibria[trainingSamples_no: sample_no]
-    #
-    #     return training_games, training_equilibria, test_games, test_equilibria
-
-    # ******
     def dataset_address(self):
         """
         Function to get the address to the desired dataset
@@ -383,7 +280,7 @@ class NashNet:
         return test_games, test_equilibria
 
     # ******
-    def list_files(self, num_players, num_strategies, validation_split, test_split):
+    def list_files(self, validation_split, test_split):
         """
         Function to list the file names for training, testing, and evaluating with the format
         [(G1, E1), (G2, E2) ... (G**, E**)]
@@ -424,16 +321,10 @@ class NashNet:
         return training_files, validation_files, test_files
 
     # ******
-    def build_model(self, test_mode=False):
+    def build_model(self):
         """
         Function to build and compile the neural network model
         """
-
-        # Set epsilon computation if test mode is enabled
-        if test_mode:
-            compute_epsilon = self.cfg["compute_epsilon"]
-        else:
-            compute_epsilon = False
 
         # Build the neural network model
         if not self.cfg["enable_hydra"]:
@@ -450,8 +341,7 @@ class NashNet:
                                               monohead_layer_sizes_per_player=self.cfg[
                                                   "monohead_layer_sizes_per_player"],
                                               enable_batchNormalization=self.cfg["batch_normalization"],
-                                              payoffToEq_weight=self.cfg["payoff_to_equilibrium_weight"],
-                                              compute_epsilon=compute_epsilon
+                                              payoffToEq_weight=self.cfg["payoff_to_equilibrium_weight"]
                                               )
         else:
             self.model = build_hydra_model(num_players=self.cfg["num_players"],
@@ -470,8 +360,7 @@ class NashNet:
                                            hydra_layer_sizes_per_player=self.cfg["hydra_layer_sizes_per_player"],
                                            enable_batchNormalization=self.cfg["batch_normalization"],
                                            hydra_shape=self.cfg["hydra_physique"],
-                                           payoffToEq_weight=self.cfg["payoff_to_equilibrium_weight"],
-                                           compute_epsilon=compute_epsilon
+                                           payoffToEq_weight=self.cfg["payoff_to_equilibrium_weight"]
                                            )
 
     # ******
