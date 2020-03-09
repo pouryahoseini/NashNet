@@ -333,14 +333,14 @@ def lossFunction_payoff_MSE(game, payoff_Eq_function, payoffToEq_weight, pureStr
 
 
 # ********************************
-def lossFunction_payoff_Eq_weightedSum(game, payoff_Eq_function, payoffToEq_weight, pureStrategies_perPlayer,
+def lossFunction_payoff_Eq_weightedAverage(game, payoff_Eq_function, payoffToEq_weight, pureStrategies_perPlayer,
                                        computePayoff_function, num_players):
     """
-    Function to compute the loss by taking the weighted sum of MSE of equilibria and MSE of payoffs resulted
+    Function to compute the loss by taking the weighted average of MSE of equilibria and MSE of payoffs resulted
     from the equilibria.
     """
 
-    def payoff_Eq_weightedSum(nashEq_true, nashEq_pred):
+    def payoff_Eq_weightedAverage(nashEq_true, nashEq_pred):
         # Call th helper function to compute the MSE of payoffs and equilibria
         loss_Eq_MSE, loss_payoff_MSE = payoff_Eq_function(game, pureStrategies_perPlayer, nashEq_true, nashEq_pred,
                                                           computePayoff_function, num_players)
@@ -348,7 +348,7 @@ def lossFunction_payoff_Eq_weightedSum(game, payoff_Eq_function, payoffToEq_weig
         # Compute the loss, average over the batch, and return
         return K.mean(loss_Eq_MSE + payoffToEq_weight * loss_payoff_MSE) / (1 + payoffToEq_weight)
 
-    return payoff_Eq_weightedSum
+    return payoff_Eq_weightedAverage
 
 
 # ********************************
@@ -717,8 +717,8 @@ def chooseLossFunction(lossType, payoffLoss_type, num_players, enableHydra):
             return lossFunction_Eq_MSE, payoffLoss_function, computePayoff_function
     elif lossType == 'payoff_MSE':
         return lossFunction_payoff_MSE, payoffLoss_function, computePayoff_function
-    elif lossType == 'payoff_Eq_weightedSum':
-        return lossFunction_payoff_Eq_weightedSum, payoffLoss_function, computePayoff_function
+    elif lossType == 'payoff_Eq_weightedAverage':
+        return lossFunction_payoff_Eq_weightedAverage, payoffLoss_function, computePayoff_function
     elif lossType == 'payoff_Eq_multiplication':
         return lossFunction_payoff_Eq_multiplication, payoffLoss_function, computePayoff_function
     else:
