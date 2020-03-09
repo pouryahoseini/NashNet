@@ -130,4 +130,4 @@ def split_games(path, size=NEW_FILE_SIZE):
 
 if MOVE_DATA_FIRST:
     move_data_to_folder(dataset_path=ROOT_ADDRESS)
-    split_games(ROOT_ADDRESS + RELATIVE_SPLITTING_ADDRESS)
+    split_games(os.path.join(ROOT_ADDRESS, RELATIVE_SPLITTING_ADDRESS))
