@@ -4,32 +4,24 @@ import os
 from tensorflow.keras.utils import Sequence
 from NashNet_utils import unisonShuffle
 
-'''
- Specifications for NashSequence:
-    NashSequence, inheriting from sequence, is designed to feed a dataset into a tf.keras sequential model
-    
-__init__(
-    file_list - List of game and equilibria tuples in the following form:
-        [ (G1, E1), (G2, E2) ... (G**, E**)]
-        Each pair of games / equilibria is assumed to be correct.
-        Should contain the relative path from *NashNet Dir* 
-            ex: ./Datasets/2P/2x2/Formatted_Data/
-    max_equilibria - int >0
-        Maximum number of equilibria to keep. Based on number of heads the hydra model contains
-        Also checks that the equlibria files provided are valid
-    normalize_input_data - Bool, whether or not to normalize input data
-    batch_size - int >0, The number of samples to feed in each batch
-
-    The sequence requires that __init__, __len__, and __getitem__ are defined.
-    Additionally, on_epoch_end may be defined, and is called at the end of every epoch
-    
-    __len__ returns the number of batches that will be provided
-    __getitem__ returns the loaded data
-    on_epoch_end re-shuffles the indices list, and resets counters   
-'''
 
 class NashSequence(Sequence):
     def __init__(self, files_list, files_location, max_equilibria, normalize_input_data, batch_size=64):
+        """
+        Constructor for the dataset generator.
+        :param files_list: List of game and equilibria tuples in the following form:
+        [ (G1, E1), (G2, E2) ... (G**, E**)]
+        Each pair of games / equilibria is assumed to be correct.
+        Should contain the relative path from *NashNet Dir*
+            ex: ./Datasets/2P/2x2/Formatted_Data/
+        :param files_location: The location to *NashNet Dir*
+        :param max_equilibria: int >0
+        Maximum number of equilibria to keep. Based on number of heads the hydra model contains
+        Also checks that the equilibria files provided are valid
+        :param normalize_input_data: Bool, whether or not to normalize input data
+        :param batch_size: int >0, The number of samples to feed in each batch
+        """
+
         # Get files, then sort them to ensure they match up
         self.game_files = [x[0] for x in files_list]
         self.equilibria_files = [x[1] for x in files_list]
@@ -81,10 +73,20 @@ class NashSequence(Sequence):
 
     # Gets number of batches
     def __len__(self):
+        """
+        :return: The number of batches that will be provided
+        """
+
         return int(math.ceil(self.num_samples / self.batch_size))
 
     # Gets the batch, specified by batch_num
     def __getitem__(self, batch_num):
+        """
+        Function to load and return a batch of samples
+        :param batch_num: The number of samples in the batch
+        :return: The loaded batch of data
+        """
+
         # 2 Cases - Data is all in one file, or data is split over two files
         #   1st file is found by using the formula f1_idx = int(batch_num*self.batch_size/self.file_len)
         f1_idx = int(batch_num * self.batch_size / self.file_len)
@@ -132,6 +134,10 @@ class NashSequence(Sequence):
         return self.__process_data(self.x, self.y)
 
     def on_epoch_end(self):
+        """
+        re-shuffles the indices list of data files
+        """
+
         np.random.shuffle(self.indices)
 
     def __process_data(self, sampleGames, sampleEquilibria):
@@ -157,6 +163,3 @@ class NashSequence(Sequence):
                           np.reshape(np.max(sampleGames, axis=axes_except_zero) - np.min(sampleGames, axis=axes_except_zero), scalar_dim_except_zero)
 
         return sampleGames, sampleEquilibria
-
-
-
