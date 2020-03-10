@@ -53,12 +53,20 @@ class NashNet:
         """
 
         # Decide on the training, validation, and test data lists of files
-        if self.cfg["rewrite_saved_test_data_if_model_weights_given"] or (not self.weights_initialized):
-            training_files, validation_files, self.test_files = self.list_files(validation_split=self.cfg["validation_split"],
-                                                                                test_split=self.cfg["test_split"])
+        training_files, validation_files, self.test_files = self.list_files(validation_split=self.cfg["validation_split"],
+                                                                            test_split=self.cfg["test_split"])
+
+        # Overwrite the list of test files if an initial training is available and there is a test files list file
+        if self.weights_initialized:
+            try:
+                self.test_files = loadTestData(self.cfg["test_files_list"],
+                                               self.cfg["num_players"],
+                                               self.cfg["num_strategies"])
+            except FileNotFoundError:
+                print("Test data were not available, deciding on the test data now.")
 
         # Save the list of test files
-        if self.cfg['save_test_data']:
+        if self.cfg['save_test_data'] and (self.cfg["rewrite_saved_test_data_if_model_weights_given"] or (not self.weights_initialized)):
             saveTestData(self.test_files, self.cfg["test_files_list"], self.cfg["num_players"], self.cfg["num_strategies"])
 
         # Print the summary of the model

@@ -761,7 +761,7 @@ def saveTestData(test_files, saved_test_files_list, num_players, num_strategies)
 # ********************************
 def loadTestData(saved_test_files_list, num_players, num_strategies):
     """
-    Function to save test data to reuse for evaluation purposes
+    Function to load test data for evaluation purposes
     """
 
     address = './Datasets/' + str(num_players) + 'P/' + str(num_strategies[0])
