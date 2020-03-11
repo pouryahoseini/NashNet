@@ -59,15 +59,32 @@ class NashNet:
         # Overwrite the list of test files if an initial training is available and there is a test files list file
         if self.weights_initialized:
             try:
-                self.test_files = loadTestData(self.cfg["test_files_list"],
-                                               self.cfg["num_players"],
-                                               self.cfg["num_strategies"])
+                self.test_files = loadDataSplit(saved_files_list=self.cfg["test_files_list"],
+                                                num_players=self.cfg["num_players"],
+                                                num_strategies=self.cfg["num_strategies"])
+                validation_files = loadDataSplit(saved_files_list=self.cfg["validation_files_list"],
+                                                 num_players=self.cfg["num_players"],
+                                                 num_strategies=self.cfg["num_strategies"])
+                training_files = loadDataSplit(saved_files_list=self.cfg["training_files_list"],
+                                               num_players=self.cfg["num_players"],
+                                               num_strategies=self.cfg["num_strategies"])
             except FileNotFoundError:
-                print("Test data were not available, deciding on the test data now.")
+                print("Data split information were not available, deciding on the test data now.")
 
         # Save the list of test files
-        if self.cfg['save_test_data'] and (self.cfg["rewrite_saved_test_data_if_model_weights_given"] or (not self.weights_initialized)):
-            saveTestData(self.test_files, self.cfg["test_files_list"], self.cfg["num_players"], self.cfg["num_strategies"])
+        if self.cfg['save_split_data'] and (self.cfg["rewrite_saved_test_data_if_model_weights_given"] or not self.weights_initialized):
+            saveDataSplit(files_list=self.test_files,
+                          save_list_file=self.cfg["test_files_list"],
+                          num_players=self.cfg["num_players"],
+                          num_strategies=self.cfg["num_strategies"])
+            saveDataSplit(files_list=validation_files,
+                          save_list_file=self.cfg["validation_files_list"],
+                          num_players=self.cfg["num_players"],
+                          num_strategies=self.cfg["num_strategies"])
+            saveDataSplit(files_list=training_files,
+                          save_list_file=self.cfg["training_files_list"],
+                          num_players=self.cfg["num_players"],
+                          num_strategies=self.cfg["num_strategies"])
 
         # Print the summary of the model
         print(self.model.summary())
@@ -109,7 +126,9 @@ class NashNet:
                                          )
 
         # Save the model
-        saveModel(self.model, self.cfg["model_architecture_file"], self.cfg["model_weights_file"])
+        saveModel(model=self.model,
+                  model_architecture_file=self.cfg["model_architecture_file"],
+                  model_weights_file=self.cfg["model_weights_file"])
 
         # Write the loss and metric values during the training and test time
         save_training_history(trainingHistory, self.cfg["training_history_file"])
@@ -140,10 +159,10 @@ class NashNet:
             num_to_print = self.cfg["examples_to_print"]
 
         # Load list of test data files if not already created
-        if not self.test_files:
-            self.test_files = loadTestData(self.cfg["test_files_list"],
-                                           self.cfg["num_players"],
-                                           self.cfg["num_strategies"])
+        if self.test_files is not None:
+            self.test_files = loadDataSplit(saved_files_list=self.cfg["test_files_list"],
+                                            num_players=self.cfg["num_players"],
+                                            num_strategies=self.cfg["num_strategies"])
 
         # Create the test data generator
         test_seq = NashSequence(files_list=self.test_files,
@@ -210,9 +229,9 @@ class NashNet:
 
             # Load list of test data files if not already created
             if not self.test_files:
-                self.test_files = loadTestData(self.cfg["test_files_list"],
-                                               self.cfg["num_players"],
-                                               self.cfg["num_strategies"])
+                self.test_files = loadDataSplit(saved_files_list=self.cfg["test_files_list"],
+                                                num_players=self.cfg["num_players"],
+                                                num_strategies=self.cfg["num_strategies"])
 
         # Create the test data generator
         test_seq = NashSequence(files_list=self.test_files,
@@ -405,17 +424,14 @@ class NashNet:
         self.cfg["nesterov"] = config_parser.getboolean(configSection, "nesterov")
         self.cfg["batch_size"] = config_parser.getint(configSection, "batch_size")
         self.cfg["normalize_input_data"] = config_parser.getboolean(configSection, "normalize_input_data")
-        # self.cfg['dataset_types_quota'] = ast.literal_eval(config_parser.get(configSection, "dataset_types_quota"))
-        # self.cfg['general_dataset_files'] = ast.literal_eval(config_parser.get(configSection, "general_dataset_files"))
-        # self.cfg['mixed_only_dataset_files'] = ast.literal_eval(config_parser.get(configSection, "mixed_only_dataset_files"))
-        # self.cfg['group_only_dataset_files'] = ast.literal_eval(config_parser.get(configSection, "group_only_dataset_files"))
-        # self.cfg['mixed_group_only_dataset_files'] = ast.literal_eval(config_parser.get(configSection, "mixed_group_only_dataset_files"))
         self.cfg["model_architecture_file"] = config_parser.get(configSection, "model_architecture_file")
         self.cfg["model_weights_file"] = config_parser.get(configSection, "model_weights_file")
         self.cfg["loss_type"] = config_parser.get(configSection, "loss_type")
         self.cfg["payoff_to_equilibrium_weight"] = config_parser.getfloat(configSection, "payoff_to_equilibrium_weight")
         self.cfg["enable_hydra"] = config_parser.getboolean(configSection, "enable_hydra")
         self.cfg["test_files_list"] = config_parser.get(configSection, "test_files_list")
+        self.cfg["training_files_list"] = config_parser.get(configSection, "training_files_list")
+        self.cfg["validation_files_list"] = config_parser.get(configSection, "validation_files_list")
         self.cfg["training_history_file"] = config_parser.get(configSection, "training_history_file")
         self.cfg["test_results_file"] = config_parser.get(configSection, "test_results_file")
         self.cfg["examples_print_file"] = config_parser.get(configSection, "examples_print_file")
@@ -427,7 +443,7 @@ class NashNet:
         self.cfg["compute_epsilon"] = config_parser.getboolean(configSection, "compute_epsilon")
         self.cfg["test_batch_size"] = config_parser.getint(configSection, "test_batch_size")
         self.cfg["commutativity_test_permutations"] = config_parser.getint(configSection, "commutativity_test_permutations")
-        self.cfg["rewrite_saved_test_data_if_model_weights_given"] = config_parser.get(configSection, "rewrite_saved_test_data_if_model_weights_given")
+        self.cfg["rewrite_saved_test_data_if_model_weights_given"] = config_parser.getboolean(configSection, "rewrite_saved_test_data_if_model_weights_given")
         self.cfg['sawfish_common_layer_sizes'] = ast.literal_eval(config_parser.get(configSection, "sawfish_common_layer_sizes"))
         self.cfg['bull_necked_common_layer_sizes'] = ast.literal_eval(config_parser.get(configSection, "bull_necked_common_layer_sizes"))
         self.cfg['monohead_common_layer_sizes'] = ast.literal_eval(config_parser.get(configSection, "monohead_common_layer_sizes"))
@@ -436,7 +452,7 @@ class NashNet:
         self.cfg['hydra_layer_sizes_per_player'] = ast.literal_eval(config_parser.get(configSection, "hydra_layer_sizes_per_player"))
         self.cfg['monohead_layer_sizes_per_player'] = ast.literal_eval(config_parser.get(configSection, "monohead_layer_sizes_per_player"))
         self.cfg['split_files_folder_name'] = config_parser.get(configSection, "split_files_folder_name")
-        self.cfg['save_test_data'] = config_parser.getboolean(configSection, "save_test_data")
+        self.cfg['save_split_data'] = config_parser.getboolean(configSection, "save_split_data")
         self.cfg['generator_max_queue_size'] = config_parser.getint(configSection, "generator_max_queue_size")
         self.cfg['generator_multiprocessing'] = config_parser.getboolean(configSection, "generator_multiprocessing")
         self.cfg["print_to_terminal"] = config_parser.getboolean(configSection, "print_to_terminal")

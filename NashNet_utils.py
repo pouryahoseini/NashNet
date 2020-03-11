@@ -738,9 +738,9 @@ def save_training_history(trainingHistory, trainingHistory_file):
 
 
 # ********************************
-def saveTestData(test_files, saved_test_files_list, num_players, num_strategies):
+def saveDataSplit(files_list, save_list_file, num_players, num_strategies):
     """
-    Function to save test data to reuse for evaluation purposes
+    Function to save list of test/validation/training data to reuse later
     """
 
     address = './Datasets/' + str(num_players) + 'P/' + str(num_strategies[0])
@@ -749,31 +749,31 @@ def saveTestData(test_files, saved_test_files_list, num_players, num_strategies)
 
     assert os.path.exists(address), 'The path ' + address + ' does not exist'
 
-    address += '/Test_Data/'
+    address += '/Data_Split/'
     if not os.path.exists(address):
         os.mkdir(address)
 
-    saved_test_files_list += '.npy'
+    save_list_file += '.npy'
 
-    np.save(os.path.join(address, saved_test_files_list), test_files)
+    np.save(os.path.join(address, save_list_file), files_list)
 
 
 # ********************************
-def loadTestData(saved_test_files_list, num_players, num_strategies):
+def loadDataSplit(saved_files_list, num_players, num_strategies):
     """
-    Function to load test data for evaluation purposes
+    Function to load test/validation/training data
     """
 
     address = './Datasets/' + str(num_players) + 'P/' + str(num_strategies[0])
     for strategy in num_strategies[1:]:
         address += 'x' + str(strategy)
-    address += '/Test_Data/'
+    address += '/Data_Split/'
 
-    saved_test_files_list += '.npy'
+    saved_files_list += '.npy'
 
-    test_files = np.load(os.path.join(address + saved_test_files_list))
+    files_list = np.load(os.path.join(address + saved_files_list))
 
-    return test_files
+    return files_list
 
 
 # ********************************
