@@ -2,7 +2,7 @@ import shutil
 import os
 import numpy as np
 
-RELATIVE_SPLITTING_ADDRESS = "2P/3x3/"
+RELATIVE_SPLITTING_ADDRESS = "2P/2x3/"
 ROOT_ADDRESS = "./Datasets/"
 SPLIT_FILES_FOLDER = "/Split_Files/"
 ORIGINAL_FILES_FOLDER = "Individual_Games/"
@@ -83,8 +83,8 @@ def split_games(path, size=NEW_FILE_SIZE):
     games.sort()
 
     # Prime the loop. Open initial game and equilibria, then create temp writing np array based on their shapes
-    g_init = np.load(full_path + games[0])
-    e_init = np.load(full_path + equilibria[0])
+    g_init = np.load(os.path.join(full_path, games[0]))
+    e_init = np.load(os.path.join(full_path, equilibria[0]))
     g_acc = np.zeros((size,) + g_init.shape[1:])
     e_acc = np.zeros((size,) + e_init.shape[1:])
     acc_ctr = counter = file_no = 0
@@ -94,13 +94,13 @@ def split_games(path, size=NEW_FILE_SIZE):
 
     for i in range(len(games)):
         # Open the npy
-        g = np.load(full_path + games[i])
-        e = np.load(full_path + equilibria[i])
+        g = np.load(os.path.join(full_path, games[i]))
+        e = np.load(os.path.join(full_path, equilibria[i]))
 
-        #Delete original files if enabled
+        # Delete original files if enabled
         if DELETE_ORIGINAL_FILES:
-            os.remove(full_path + games[i])
-            os.remove(full_path + equilibria[i])
+            os.remove(os.path.join(full_path, games[i]))
+            os.remove(os.path.join(full_path, equilibria[i]))
 
         # Only use more recent generated games where shape is (## of games, <Game stuff>)
         if g_init.shape[0] < size:
@@ -126,6 +126,10 @@ def split_games(path, size=NEW_FILE_SIZE):
                 np.save(dest_path + "Games_" + str(acc_ctr) + ".npy", g_acc)
                 np.save(dest_path + "Equilibria_" + str(acc_ctr) + ".npy", e_acc)
                 acc_ctr += 1
+
+    # Delete the folder containing the original files, if enabled
+    if DELETE_ORIGINAL_FILES:
+        os.rmdir(full_path)
 
 
 if MOVE_DATA_FIRST:
