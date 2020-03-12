@@ -738,7 +738,7 @@ def save_training_history(trainingHistory, trainingHistory_file):
 
 
 # ********************************
-def saveDataSplit(files_list, save_list_file, num_players, num_strategies):
+def saveDataSplit(files_list, save_list_file, data_split_folder, num_players, num_strategies):
     """
     Function to save list of test/validation/training data to reuse later
     """
@@ -749,7 +749,7 @@ def saveDataSplit(files_list, save_list_file, num_players, num_strategies):
 
     assert os.path.exists(address), 'The path ' + address + ' does not exist'
 
-    address += '/Data_Split/'
+    address = os.path.join(address, data_split_folder)
     if not os.path.exists(address):
         os.mkdir(address)
 
@@ -759,7 +759,7 @@ def saveDataSplit(files_list, save_list_file, num_players, num_strategies):
 
 
 # ********************************
-def loadDataSplit(saved_files_list, num_players, num_strategies):
+def loadDataSplit(saved_files_list, data_split_folder, num_players, num_strategies):
     """
     Function to load test/validation/training data
     """
@@ -767,7 +767,7 @@ def loadDataSplit(saved_files_list, num_players, num_strategies):
     address = './Datasets/' + str(num_players) + 'P/' + str(num_strategies[0])
     for strategy in num_strategies[1:]:
         address += 'x' + str(strategy)
-    address += '/Data_Split/'
+    address = os.path.join(address, data_split_folder)
 
     saved_files_list += '.npy'
 

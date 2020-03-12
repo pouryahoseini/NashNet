@@ -60,12 +60,15 @@ class NashNet:
         if self.weights_initialized:
             try:
                 self.test_files = loadDataSplit(saved_files_list=self.cfg["test_files_list"],
+                                                data_split_folder=self.cfg["data_split_folder"],
                                                 num_players=self.cfg["num_players"],
                                                 num_strategies=self.cfg["num_strategies"])
                 validation_files = loadDataSplit(saved_files_list=self.cfg["validation_files_list"],
+                                                 data_split_folder=self.cfg["data_split_folder"],
                                                  num_players=self.cfg["num_players"],
                                                  num_strategies=self.cfg["num_strategies"])
                 training_files = loadDataSplit(saved_files_list=self.cfg["training_files_list"],
+                                               data_split_folder=self.cfg["data_split_folder"],
                                                num_players=self.cfg["num_players"],
                                                num_strategies=self.cfg["num_strategies"])
             except FileNotFoundError:
@@ -75,14 +78,17 @@ class NashNet:
         if self.cfg['save_split_data'] and (self.cfg["rewrite_saved_test_data_if_model_weights_given"] or not self.weights_initialized):
             saveDataSplit(files_list=self.test_files,
                           save_list_file=self.cfg["test_files_list"],
+                          data_split_folder=self.cfg["data_split_folder"],
                           num_players=self.cfg["num_players"],
                           num_strategies=self.cfg["num_strategies"])
             saveDataSplit(files_list=validation_files,
                           save_list_file=self.cfg["validation_files_list"],
+                          data_split_folder=self.cfg["data_split_folder"],
                           num_players=self.cfg["num_players"],
                           num_strategies=self.cfg["num_strategies"])
             saveDataSplit(files_list=training_files,
                           save_list_file=self.cfg["training_files_list"],
+                          data_split_folder=self.cfg["data_split_folder"],
                           num_players=self.cfg["num_players"],
                           num_strategies=self.cfg["num_strategies"])
 
@@ -161,6 +167,7 @@ class NashNet:
         # Load list of test data files if not already created
         if self.test_files is None:
             self.test_files = loadDataSplit(saved_files_list=self.cfg["test_files_list"],
+                                            data_split_folder=self.cfg["data_split_folder"],
                                             num_players=self.cfg["num_players"],
                                             num_strategies=self.cfg["num_strategies"])
 
@@ -230,6 +237,7 @@ class NashNet:
             # Load list of test data files if not already created
             if not self.test_files:
                 self.test_files = loadDataSplit(saved_files_list=self.cfg["test_files_list"],
+                                                data_split_folder=self.cfg["data_split_folder"],
                                                 num_players=self.cfg["num_players"],
                                                 num_strategies=self.cfg["num_strategies"])
 
@@ -458,6 +466,7 @@ class NashNet:
         self.cfg["print_to_terminal"] = config_parser.getboolean(configSection, "print_to_terminal")
         self.cfg["save_interim_weights"] = config_parser.getboolean(configSection, "save_interim_weights")
         self.cfg["use_best_weights"] = config_parser.getboolean(configSection, "use_best_weights")
+        self.cfg['data_split_folder'] = config_parser.get(configSection, "data_split_folder")
 
         # Check input configurations
         if not (0 < self.cfg["validation_split"] < 1):
