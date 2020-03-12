@@ -4,6 +4,7 @@ import tensorflow.keras as keras
 from Sequence_Generator import *
 from NashNet_utils import *
 import logging
+from Network_Topology import build_hydra_model, build_monohead_model
 from Test_Metrics import epsilon_test, commutativity_test
 
 
