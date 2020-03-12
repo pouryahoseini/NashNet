@@ -2,7 +2,7 @@ import shutil
 import os
 import numpy as np
 
-RELATIVE_SPLITTING_ADDRESS = "2P/4x4/"
+RELATIVE_SPLITTING_ADDRESS = "2P/3x3/"
 ROOT_ADDRESS = "./Datasets/"
 SPLIT_FILES_FOLDER = "/Split_Files/"
 ORIGINAL_FILES_FOLDER = "Individual_Games/"

@@ -159,7 +159,7 @@ class NashNet:
             num_to_print = self.cfg["examples_to_print"]
 
         # Load list of test data files if not already created
-        if self.test_files is not None:
+        if self.test_files is None:
             self.test_files = loadDataSplit(saved_files_list=self.cfg["test_files_list"],
                                             num_players=self.cfg["num_players"],
                                             num_strategies=self.cfg["num_strategies"])
