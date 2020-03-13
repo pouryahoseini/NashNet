@@ -18,8 +18,6 @@ warnings.filterwarnings("ignore")
 # Global Variables
 # ************************
 # Output
-GAMES_DATASET_NAME = 'Games'
-EQUILIBRIA_DATASET_NAME = 'Equilibria'
 NUMBER_OF_SAMPLES = 5000
 
 # Game Settings
@@ -412,10 +410,30 @@ def multi_process_generator(games_dataset_name, equilibria_dataset_name, number_
 
 
 # ************************
+def construct_output_filename(pure_strategies_per_player, player_number, number_of_samples, dataset_number=1):
+    # Construct the file names
+    strategy_str = ''
+
+    for strategy_element in pure_strategies_per_player[:-1]:
+        strategy_str += str(strategy_element) + 'x'
+
+    strategy_str += str(pure_strategies_per_player[-1])
+
+    games_dataset_name = 'Games-{}_{}P-{}_{:.0E}'.format(dataset_number, player_number, strategy_str, number_of_samples)
+    equilibria_dataset_name = 'Equilibria-{}_{}P-{}_{:.0E}'.format(dataset_number, player_number, strategy_str, number_of_samples)
+
+    return games_dataset_name, equilibria_dataset_name
+
+
+# ************************
 # Main script
 if __name__ == "__main__":
-    multi_process_generator(games_dataset_name=GAMES_DATASET_NAME,
-                            equilibria_dataset_name=EQUILIBRIA_DATASET_NAME,
+    games_dataset_name, equilibria_dataset_name = construct_output_filename(pure_strategies_per_player=PURE_STRATEGIES_PER_PLAYER,
+                                                                            player_number=PLAYER_NUMBER,
+                                                                            number_of_samples=NUMBER_OF_SAMPLES)
+
+    multi_process_generator(games_dataset_name=games_dataset_name,
+                            equilibria_dataset_name=equilibria_dataset_name,
                             number_of_samples=NUMBER_OF_SAMPLES,
                             max_equilibria_per_game=MAXIMUM_EQUILIBRIA_PER_GAME,
                             player_number=PLAYER_NUMBER,
