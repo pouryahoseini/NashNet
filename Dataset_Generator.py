@@ -10,6 +10,7 @@ import ast
 import sys
 import signal
 import os
+import Standard_Games
 
 # Suppress warnings. (To mute Nashpy's verbose warnings about degenerate games)
 warnings.filterwarnings("ignore")
@@ -19,12 +20,14 @@ warnings.filterwarnings("ignore")
 # Output
 GAMES_DATASET_NAME = 'Games'
 EQUILIBRIA_DATASET_NAME = 'Equilibria'
-NUMBER_OF_SAMPLES = 300
+NUMBER_OF_SAMPLES = 5000
 
 # Game Settings
 MAXIMUM_EQUILIBRIA_PER_GAME = 20
 PLAYER_NUMBER = 2
-PURE_STRATEGIES_PER_PLAYER = [3, 3]
+PURE_STRATEGIES_PER_PLAYER = [2, 2]
+# Game types: "Random" ; "Coordination" ; "Volunteer_Dilemma" ; "Prisoner_Dilemma"
+GAME_TYPE = "Random"
 
 # Equilibrium filtering
 DISCARD_NON_MIXED_STRATEGY_GAMES = False
@@ -47,9 +50,9 @@ TIMEOUT_PER_SAMPLE = 10
 
 
 # ************************
-def generate_game(player_number, strategies_per_player, use_gambit):
+def generate_game(player_number, strategies_per_player, use_gambit, game_type):
     """
-    Function to generate a game with values between 0 and 1
+    Function to generate a game.
     """
 
     if not use_gambit:
@@ -60,10 +63,50 @@ def generate_game(player_number, strategies_per_player, use_gambit):
     else:
         game = np.zeros((player_number,) + tuple(strategies_per_player), dtype=gambit.Rational)
 
-        for i in range(player_number):
-            game[i] = np.random.randint(0, 1e6, tuple(strategies_per_player))
+        if game_type == "Random":
+            for i in range(player_number):
+                game[i] = np.random.randint(0, 1e6, tuple(strategies_per_player))
+
+        elif game_type == "Coordination":
+            game = Standard_Games.coordination_game(number_of_samples=1,
+                                                    random_number_range=1e6,
+                                                    number_of_players=player_number,
+                                                    strategies_number=max(strategies_per_player),
+                                                    data_type=gambit.Rational)[0]
+
+        elif game_type == "Volunteer_Dilemma":
+            game = Standard_Games.volunteer_dilemma(number_of_samples=1,
+                                                    random_number_range=1e6,
+                                                    number_of_players=player_number,
+                                                    data_type=gambit.Rational)[0]
+
+        elif game_type == "Prisoner_Dilemma":
+            game = Standard_Games.prisoner_dilemma(number_of_samples=1,
+                                                   random_number_range=1e6,
+                                                   data_type=gambit.Rational)[0]
 
     return game
+
+
+# ************************
+def check_standard_game_strategy_number(strategies_per_player, game_type):
+    """
+    Function to check the game size matches the requirements of the specified game type.
+    """
+
+    if game_type == "Coordination":
+        # Check if the game is symmetric
+        assert strategies_per_player.count(strategies_per_player[0]) == len(strategies_per_player), \
+            "The game " + str(strategies_per_player) + " is not symmetric, which is necessary for Coordination Game."
+    elif game_type == "Volunteer_Dilemma":
+        assert strategies_per_player.count(2) == len(strategies_per_player), \
+            "The game Volunteer's Dilemma only allows for 2 strategies per player (Current game shape: " + str(strategies_per_player) + ")."
+    elif game_type == "Prisoner_Dilemma":
+        assert len(strategies_per_player) == 2,\
+            "Prisoner's Dilemma only has two players (Current game shape: " + str(strategies_per_player) + ")."
+
+        assert strategies_per_player.count(2) == len(strategies_per_player), \
+            "The game Prisoner's Dilemma only allows for 2 strategies per player (Current game shape: " + str(strategies_per_player) + ")."
 
 
 # ************************
@@ -179,7 +222,8 @@ def discardSingleEquilibriumGames(equilibria):
 # ************************
 def generate_dataset(output_games, output_equilibria, process_index, num_generated, num_games,
                      max_nashes, player_number, strategies_per_player, discard_non_mixed_strategy_games,
-                     filter_pure_strategies, discard_single_equilibrium_games, use_gambit, timeout_per_sample):
+                     filter_pure_strategies, discard_single_equilibrium_games, use_gambit, timeout_per_sample,
+                     game_type):
     """
     Function to generate games and compute their Nash equilibria
     """
@@ -193,6 +237,7 @@ def generate_dataset(output_games, output_equilibria, process_index, num_generat
     # Check if Nashpy is not assigned for solving games with more than 2 players, as it is unable to work on those games
     if not use_gambit:
         assert player_number == 2, "Nashpy is unable to solve games with more than 2 players."
+        assert game_type == "Random", "Only randomly generated games are supported in Nashpy mode."
 
     # Check if enough strategy numbers are given for players
     try:
@@ -200,6 +245,9 @@ def generate_dataset(output_games, output_equilibria, process_index, num_generat
             'Number of strategies for at least one player is not defined.'
     except TypeError:
         raise Exception('Number of strategies for players should be an iterable.')
+
+    # If standard games are being generated, check number of strategies of each player based on the game rules
+    check_standard_game_strategy_number(strategies_per_player, game_type)
 
     # Create an empty numpy array with proper shape for games and Nash equilibria
     games = np.zeros(((num_games, player_number) + tuple(strategies_per_player)), dtype=np.float32)
@@ -220,7 +268,8 @@ def generate_dataset(output_games, output_equilibria, process_index, num_generat
             # Generate a game
             g = generate_game(player_number=player_number,
                               strategies_per_player=strategies_per_player,
-                              use_gambit=use_gambit)
+                              use_gambit=use_gambit,
+                              game_type=game_type)
 
             # Get the nash equilibria
             eq = compute_nash(game=g, use_gambit=use_gambit)
@@ -313,7 +362,7 @@ def track_sampleGeneration_progress(num_generated, num_samples):
 def multi_process_generator(games_dataset_name, equilibria_dataset_name, number_of_samples, max_equilibria_per_game,
                             player_number, strategies_per_player, discard_non_mixed_strategy_games,
                             filter_pure_strategies, discard_single_equilibrium_games, use_gambit, cpu_cores,
-                            timeout_per_sample):
+                            timeout_per_sample, game_type):
     """
     Function to generate dataset on multiple processes
     """
@@ -332,14 +381,15 @@ def multi_process_generator(games_dataset_name, equilibria_dataset_name, number_
                                                args=(games, equilibria, processCounter, numGenerated, processQuota,
                                                      max_equilibria_per_game, player_number, strategies_per_player,
                                                      discard_non_mixed_strategy_games, filter_pure_strategies,
-                                                     discard_single_equilibrium_games, use_gambit, timeout_per_sample))
+                                                     discard_single_equilibrium_games, use_gambit, timeout_per_sample,
+                                                     game_type))
 
         processes[processCounter].start()
 
     processes[cpu_cores - 1] = mp.Process(target=generate_dataset, args=(
         games, equilibria, (cpu_cores - 1), numGenerated, number_of_samples - (cpu_cores - 1) * processQuota,
         max_equilibria_per_game, player_number, strategies_per_player, discard_non_mixed_strategy_games,
-        filter_pure_strategies, discard_single_equilibrium_games, use_gambit, timeout_per_sample))
+        filter_pure_strategies, discard_single_equilibrium_games, use_gambit, timeout_per_sample, game_type))
 
     processes[cpu_cores - 1].start()
 
@@ -375,4 +425,5 @@ if __name__ == "__main__":
                             discard_single_equilibrium_games=DISCARD_SINGLE_EQUILIBRIUM_GAMES,
                             use_gambit=USE_GAMBIT,
                             cpu_cores=CPU_CORES,
-                            timeout_per_sample=TIMEOUT_PER_SAMPLE)
+                            timeout_per_sample=TIMEOUT_PER_SAMPLE,
+                            game_type=GAME_TYPE)
