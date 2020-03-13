@@ -54,6 +54,8 @@ class NashNet:
         """
 
         # Decide on the training, validation, and test data lists of files
+        assert not self.cfg["all_data_are_test"], "There is not training data for training is available, since all_data_are_test is set to true."
+
         training_files, validation_files, self.test_files = self.list_files(validation_split=self.cfg["validation_split"],
                                                                             test_split=self.cfg["test_split"])
 
@@ -167,16 +169,16 @@ class NashNet:
 
         # Load list of test data files if not already created
         if self.test_files is None:
-            try:
-                self.test_files = loadDataSplit(saved_files_list=self.cfg["test_files_list"],
-                                                data_split_folder=self.cfg["data_split_folder"],
-                                                num_players=self.cfg["num_players"],
-                                                num_strategies=self.cfg["num_strategies"])
-            except FileNotFoundError:
-                if self.cfg["all_data_are_test"]:
-                    _, _, self.test_files = self.list_files(validation_split=0, test_split=1)
-                    print("Warning: all_data_are_test is set to True. All the data files are considered test data.")
-                else:
+            if self.cfg["all_data_are_test"]:
+                _, _, self.test_files = self.list_files(validation_split=0, test_split=1)
+                print("Warning: all_data_are_test is set to True. All the data files are considered test data.")
+            else:
+                try:
+                    self.test_files = loadDataSplit(saved_files_list=self.cfg["test_files_list"],
+                                                    data_split_folder=self.cfg["data_split_folder"],
+                                                    num_players=self.cfg["num_players"],
+                                                    num_strategies=self.cfg["num_strategies"])
+                except FileNotFoundError:
                     raise FileNotFoundError("The file containing the list of test files not found.")
 
         # Create the test data generator
