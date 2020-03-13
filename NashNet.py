@@ -167,10 +167,17 @@ class NashNet:
 
         # Load list of test data files if not already created
         if self.test_files is None:
-            self.test_files = loadDataSplit(saved_files_list=self.cfg["test_files_list"],
-                                            data_split_folder=self.cfg["data_split_folder"],
-                                            num_players=self.cfg["num_players"],
-                                            num_strategies=self.cfg["num_strategies"])
+            try:
+                self.test_files = loadDataSplit(saved_files_list=self.cfg["test_files_list"],
+                                                data_split_folder=self.cfg["data_split_folder"],
+                                                num_players=self.cfg["num_players"],
+                                                num_strategies=self.cfg["num_strategies"])
+            except FileNotFoundError:
+                if self.cfg["all_data_are_test"]:
+                    _, _, self.test_files = self.list_files(validation_split=0, test_split=1)
+                    print("Warning: all_data_are_test is set to True. All the data files are considered test data.")
+                else:
+                    raise FileNotFoundError("The file containing the list of test files not found.")
 
         # Create the test data generator
         test_seq = NashSequence(files_list=self.test_files,
@@ -468,6 +475,7 @@ class NashNet:
         self.cfg["save_interim_weights"] = config_parser.getboolean(configSection, "save_interim_weights")
         self.cfg["use_best_weights"] = config_parser.getboolean(configSection, "use_best_weights")
         self.cfg['data_split_folder'] = config_parser.get(configSection, "data_split_folder")
+        self.cfg["all_data_are_test"] = config_parser.getboolean(configSection, "all_data_are_test")
 
         # Check input configurations
         if not (0 < self.cfg["validation_split"] < 1):
