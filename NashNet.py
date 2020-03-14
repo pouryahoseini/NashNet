@@ -244,12 +244,19 @@ class NashNet:
         if not num_to_print:
             num_to_print = self.cfg["examples_to_print"]
 
-            # Load list of test data files if not already created
-            if not self.test_files:
-                self.test_files = loadDataSplit(saved_files_list=self.cfg["test_files_list"],
-                                                data_split_folder=self.cfg["data_split_folder"],
-                                                num_players=self.cfg["num_players"],
-                                                num_strategies=self.cfg["num_strategies"])
+        # Load list of test data files if not already created
+        if not self.test_files:
+            if self.cfg["all_data_are_test"]:
+                _, _, self.test_files = self.list_files(validation_split=0, test_split=1)
+                print("Warning: all_data_are_test is set to True. All the data files are considered test data.")
+            else:
+                try:
+                    self.test_files = loadDataSplit(saved_files_list=self.cfg["test_files_list"],
+                                                    data_split_folder=self.cfg["data_split_folder"],
+                                                    num_players=self.cfg["num_players"],
+                                                    num_strategies=self.cfg["num_strategies"])
+                except FileNotFoundError:
+                    raise FileNotFoundError("The file containing the list of test files not found.")
 
         # Create the test data generator
         test_seq = NashSequence(files_list=self.test_files,
