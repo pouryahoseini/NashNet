@@ -1,7 +1,7 @@
 import configparser, ast
 import random
 import tensorflow.keras as keras
-from Sequence_Generator import *
+from Sequence_Generator import NashSequence
 from NashNet_utils import *
 import logging
 from Network_Topology import build_hydra_model, build_monohead_model
