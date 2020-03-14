@@ -22,6 +22,9 @@ class NashSequence(Sequence):
         :param batch_size: int >0, The number of samples to feed in each batch
         """
 
+        # Set random seed
+        np.random.seed(0)
+
         # Get files, then sort them to ensure they match up
         self.game_files = [x[0] for x in files_list]
         self.equilibria_files = [x[1] for x in files_list]
