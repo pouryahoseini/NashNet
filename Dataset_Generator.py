@@ -10,6 +10,7 @@ import ast
 import sys
 import signal
 import os
+import time
 import Standard_Games
 
 # Suppress warnings. (To mute Nashpy's verbose warnings about degenerate games)
@@ -225,6 +226,9 @@ def generate_dataset(output_games, output_equilibria, process_index, num_generat
     """
     Function to generate games and compute their Nash equilibria
     """
+
+    # Set random seed
+    np.random.seed(int((time.time() + process_index) * 1000))
 
     # Check Python version
     if use_gambit:
