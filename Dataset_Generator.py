@@ -228,7 +228,9 @@ def generate_dataset(output_games, output_equilibria, process_index, num_generat
     """
 
     # Set random seed
-    np.random.seed(int((time.time() + process_index) * 1000))
+    time_saved = time.time()
+    seconds = int(time_saved)
+    np.random.seed(seconds + int((time_saved - seconds) * 1000) + process_index)
 
     # Check Python version
     if use_gambit:
