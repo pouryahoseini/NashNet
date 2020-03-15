@@ -366,7 +366,7 @@ def track_sampleGeneration_progress(num_generated, num_samples):
 def multi_process_generator(games_dataset_name, equilibria_dataset_name, number_of_samples, max_equilibria_per_game,
                             player_number, strategies_per_player, discard_non_mixed_strategy_games,
                             filter_pure_strategies, discard_single_equilibrium_games, use_gambit, cpu_cores,
-                            timeout_per_sample, game_type):
+                            timeout_per_sample, game_type, save_subfolder=None):
     """
     Function to generate dataset on multiple processes
     """
@@ -411,8 +411,33 @@ def multi_process_generator(games_dataset_name, equilibria_dataset_name, number_
     equilibria = np.vstack(equilibria)
 
     # Save the generated arrays on the local drive
-    np.save("./Datasets/" + games_dataset_name, games)
-    np.save("./Datasets/" + equilibria_dataset_name, equilibria)
+    save_data(games, equilibria, games_dataset_name, equilibria_dataset_name, save_subfolder)
+
+
+# ************************
+def save_data(games, equilibria, games_dataset_name, equilibria_dataset_name, save_subfolder):
+
+    # Create a subfolder to save the data in it
+    if not os.path.exists("./Datasets/Generated_Datasets/"):
+        os.mkdir("./Datasets/Generated_Datasets/")
+
+    # Set the save address to the newly created subfolder
+    save_address = "./Datasets/Generated_Datasets/"
+
+    # Create additional subfolders if given and assign the save location to the new address
+    if save_subfolder is not None:
+        save_subfolder_split = save_subfolder.split("/")
+
+        for folder in save_subfolder_split:
+            if folder is not "":
+                save_address = os.path.join(save_address, folder)
+
+                if not os.path.exists(save_address):
+                    os.mkdir(save_address)
+
+    # Save on drive
+    np.save(os.path.join(save_address, games_dataset_name), games)
+    np.save(os.path.join(save_address, equilibria_dataset_name), equilibria)
 
 
 # ************************
@@ -450,4 +475,5 @@ if __name__ == "__main__":
                             use_gambit=USE_GAMBIT,
                             cpu_cores=CPU_CORES,
                             timeout_per_sample=TIMEOUT_PER_SAMPLE,
-                            game_type=GAME_TYPE)
+                            game_type=GAME_TYPE,
+                            save_subfolder=None)

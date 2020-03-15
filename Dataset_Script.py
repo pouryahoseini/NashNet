@@ -1,5 +1,6 @@
 import Dataset_Generator
 
+# ***********************
 # Global Variables
 NUMBER_OF_SAMPLES = 2500000
 MAX_GAME_SIZE = 100000
@@ -9,12 +10,13 @@ DISCARD_SINGLE_EQUILIBRIUM_GAMES = False
 CPU_CORES = 8
 USE_GAMBIT = True
 
-DATASET_NUMBER = 4
+DATASET_NUMBER = 1
 PURE_STRATEGIES_PER_PLAYER = [[2, 2], [2, 2, 2, 2, 2], [10, 10], [2, 3], [10, 8], [2, 3, 4], [3, 3], [4, 4], [2, 2, 2], [2, 2, 2, 2]]
 TIMEOUT_PER_SAMPLE = 5
 MAXIMUM_EQUILIBRIA_PER_GAME = 20
 
 
+# ***********************
 # Extract list of player numbers
 player_number = [len(x) for x in PURE_STRATEGIES_PER_PLAYER]
 
@@ -36,8 +38,14 @@ assert NUMBER_OF_SAMPLES % MAX_GAME_SIZE == 0,\
 # Generate the datasets
 for i in range(len(player_number)):
     for j in range(int(NUMBER_OF_SAMPLES / MAX_GAME_SIZE)):
+
+        # Print a message
         print('+++Starting to generate a dataset of games with size ' + str(PURE_STRATEGIES_PER_PLAYER[i]) + ' - number: ' + str(j + 1))
 
+        # Set the subfolder to save the data in
+        save_subfolder = str(DATASET_NUMBER) + "/" + str(PURE_STRATEGIES_PER_PLAYER[i]).rstrip(")]").lstrip("[(").replace(",", "x").replace(" ", "") + "/"
+
+        # Run the dataset generator
         Dataset_Generator.multi_process_generator(games_dataset_name=games_dataset_name[i] + "_" + str(j),
                                                   equilibria_dataset_name=equilibria_dataset_name[i] + "_" + str(j),
                                                   number_of_samples=MAX_GAME_SIZE,
@@ -49,6 +57,8 @@ for i in range(len(player_number)):
                                                   discard_single_equilibrium_games=DISCARD_SINGLE_EQUILIBRIUM_GAMES,
                                                   use_gambit=USE_GAMBIT,
                                                   cpu_cores=CPU_CORES,
-                                                  timeout_per_sample=TIMEOUT_PER_SAMPLE)
+                                                  timeout_per_sample=TIMEOUT_PER_SAMPLE,
+                                                  game_type="Random",
+                                                  save_subfolder=save_subfolder)
 
     print('***Finished generating ' + str(NUMBER_OF_SAMPLES) + ' samples of size ' + str(PURE_STRATEGIES_PER_PLAYER[i]) + ' - number: ' + str(j + 1) + '\n')
