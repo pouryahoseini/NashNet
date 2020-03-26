@@ -323,6 +323,9 @@ def generate_dataset(output_games, output_equilibria, process_index, num_generat
                     os.system('killall gambit-enummixed >/dev/null 2>&1')
             continue
 
+    # Cancel the alarm
+    signal.alarm(0)
+
     # Modify the list of games and equilibria
     output_games[process_index] = games
     output_equilibria[process_index] = nashes
