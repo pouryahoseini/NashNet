@@ -8,8 +8,8 @@ import warnings
 import ast
 import sys
 import signal
-import os
 import time
+import os
 import Standard_Games
 
 # Suppress warnings. (To mute Nashpy's verbose warnings about degenerate games)
