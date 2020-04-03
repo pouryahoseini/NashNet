@@ -6,5 +6,8 @@ env/
 *.h5
 *.pyc
 *.dat
+*.csv
+*.txt
+*.json
 .project
 .pydevproject
