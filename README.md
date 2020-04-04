@@ -9,7 +9,7 @@ The loss function and the network architecture are designed in a way that if mor
 More detailed descriptions are added after the pending papers are published.
 
 ## The Code
-NashNet is written in Python, by utilizing the Tensorflow, Keras, and Scikit-learn libraries. To generate the datasets, the Gambit library is used to find the true output values (Nash equilibria) of the regressor network.
+NashNet is written in Python, by utilizing the Tensorflow, Keras, and Scikit-learn libraries. To generate the datasets, the [Gambit](http://www.gambit-project.org) library is used to find the true output values (Nash equilibria) of the regressor network.
 
 The source code can be found under the *src* directory. To start the training and subsequent testing, run the *Run.py*. It uses the configurations stored in the *Config* folder. The trained models are stored in the *Model directory*, with the model snapshots during the training inside the *Model/Interim* folder. At the end of the training and testing, the respective report files are saved in the *Reports* folder.
 
